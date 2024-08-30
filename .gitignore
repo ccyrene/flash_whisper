@@ -1,2 +1,7 @@
 Dockerfile
 *.txt
+*.wav
+
+.devcontainer
+.github
+whisper-tiny
