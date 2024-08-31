@@ -1,5 +1,11 @@
-from onnxruntime import InferenceSession
+import numpy as np
+
 from pathlib import Path
+from typing import List, Dict
+from abc import abstractmethod
+from onnxruntime import InferenceSession
+
+from .utils import ort_type_to_dtype
 
 class ORTModelBase:
     def __init__(self, session:InferenceSession):
@@ -9,6 +15,39 @@ class ORTModelBase:
         
         self.inputs = {idx:{"Name": input_key.name, "Shape": input_key.shape, "Type": input_key.type} for idx, input_key in enumerate(self.session.get_inputs())}
         self.outputs = {idx:{"Name": output_key.name, "Shape": output_key.shape, "Type": output_key.type} for idx, output_key in enumerate(self.session.get_outputs())}
+        
+    def binding_inputs(self, inputs: List[np.ndarray]) -> Dict[str, np.ndarray]:
+        session_inputs = self.session.get_inputs()
+        if len(inputs) != len(session_inputs):
+            raise ValueError("Binding Input Error: Input not compat!")
+        
+        bindings = {}
+        for idx, session_input in enumerate(session_inputs):
+            input_idx = inputs[idx]
+            
+            if ort_type_to_dtype(session_input.type) != input_idx.dtype:
+                raise ValueError("Binding Input Error: Type not compat!")
+            
+            ort_shape = session_input.shape[1:]
+            if ort_shape != list(input_idx.shape):
+                raise ValueError("Binding Input Error: Shape not compat!")
+            
+            bindings[session_input.name] = input_idx
+                
+        return bindings
+    
+    def binding_outputs(self, outputs: List[np.ndarray]) -> Dict[str, np.ndarray]:
+        bindings = {}
+        for idx, session_output in enumerate(self.session.get_outputs()):
+            bindings[session_output.name] = outputs[idx]
+        return bindings
+    
+    @abstractmethod
+    def forward(self, *args, **kwargs):
+        pass
+
+    def __call__(self, *args, **kwargs):
+        return self.forward(*args, **kwargs) 
     
     def __str__(self) -> str:
         return "%s" % self.__class__
