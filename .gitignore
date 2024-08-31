@@ -5,3 +5,4 @@ Dockerfile
 .devcontainer
 .github
 whisper-tiny
+__pycache__

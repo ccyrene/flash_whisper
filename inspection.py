@@ -1,6 +1,13 @@
 import argparse
 import onnxruntime as ort
-from ort_base import ORTModelBase
+
+import sys
+import os
+
+# Add the src directory to the Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
+
+from flash_whisper.onnx import ORTModelBase
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Inspection .onnx model")
