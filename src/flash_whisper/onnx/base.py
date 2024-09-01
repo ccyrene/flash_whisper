@@ -27,10 +27,12 @@ class ORTModelBase:
             
             if ort_type_to_dtype(session_input.type) != input_idx.dtype:
                 raise ValueError("Binding Input Error: Type not compat!")
-            
-            ort_shape = session_input.shape[1:]
-            if ort_shape != list(input_idx.shape):
-                raise ValueError("Binding Input Error: Shape not compat!")
+
+            ort_shape = session_input.shape
+            type_mapping = {i: type(element) for i, element in enumerate(ort_shape)}
+            for pos, value in type_mapping.items():
+                if (value != str) and (ort_shape[pos] != input_idx.shape[pos]):
+                    raise ValueError(f"Binding Input Error: Shape not compat!")
             
             bindings[session_input.name] = input_idx
                 

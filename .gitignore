@@ -1,7 +1,8 @@
 Dockerfile
 *.txt
 *.wav
-.json
+*.flac
+*.json
 
 .devcontainer
 .github

@@ -1,12 +1,13 @@
 import os 
 import json
+import time
 import logging
 import numpy as np
 from enum import Enum
 from typing import Optional, Union, List, Dict, Any
 from collections import UserDict
 
-from .mel_processing import stft_np, mel_filter_bank
+from .mel_processing import stft_np, mel_filter_bank, spectrogram, window_function
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +65,7 @@ class BatchFeature(UserDict):
 class FeatureExtractionMixin:
     def __init__(self, **kwargs):
         self._processor_class = kwargs.pop("processor_class", None)
-        with open(os.path.join(os.path.dirname(__file__), '..', 'config', 'pretrained_feature_extractor_dict.json'), "r") as f:
+        with open(os.path.join(os.path.dirname(__file__), '..', 'config', 'preprocessor_config.json'), "r") as f:
             pretrained_feature_extractor_dict = json.load(f)
             
         for key, value in pretrained_feature_extractor_dict.items():
@@ -305,7 +306,27 @@ class WhisperFeatureExtractor(SequenceFeatureExtractor):
             sampling_rate=sampling_rate,
             norm="slaney",
             mel_scale="slaney",
-        ) 
+        )
+        
+    def _np_extract_fbank_features(self, waveform_batch: np.array) -> np.ndarray:
+
+        log_spec_batch = []
+        for waveform in waveform_batch:
+            log_spec = spectrogram(
+                waveform,
+                window_function(self.n_fft, "hann"),
+                frame_length=self.n_fft,
+                hop_length=self.hop_length,
+                power=2.0,
+                mel_filters=self.mel_filters,
+                log_mel="log10",
+            )
+            log_spec = log_spec[:, :-1]
+            log_spec = np.maximum(log_spec, log_spec.max() - 8.0)
+            log_spec = (log_spec + 4.0) / 4.0
+            log_spec_batch.append(log_spec)
+        log_spec_batch = np.array(log_spec_batch)
+        return log_spec_batch
     
     def _extract_fbank_features(self, waveform: np.array) -> np.ndarray:
     
