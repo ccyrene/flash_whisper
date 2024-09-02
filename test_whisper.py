@@ -17,6 +17,10 @@ audio = librosa.resample(audio, orig_sr=sr, target_sr=16000)
 whisper_model = ORTWhisper(encoder=ort.InferenceSession("./whisper-tiny/encoder_model.onnx"),
                            decoder=ort.InferenceSession("./whisper-tiny/decoder_model_merged.onnx"))
 
-temp = whisper_model(audio, sampling_rate=16000)
+import time
 
-# print(temp)
+start_time = time.time()
+temp = whisper_model(audio, sampling_rate=16000)
+print(f"using time: {(time.time() - start_time) * 1000} ms")
+
+print(temp)
