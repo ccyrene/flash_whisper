@@ -24,8 +24,7 @@ class ORTEncoder(ORTModelBase):
 class ORTDecoder(ORTModelBase):
     def __init__(self, session: InferenceSession):
         super().__init__(session)
-        
-        self.num_pkv = 4
+
         self.key_value_input_names = [key.name for key in self.session.get_inputs() if (".key" in key.name) or (".value" in key.name)]
         self.key_value_output_names = [key.name for key in self.session.get_outputs() if (".key" in key.name) or (".value" in key.name)]
         
@@ -48,15 +47,16 @@ class ORTDecoder(ORTModelBase):
         self, 
         input_ids: np.ndarray,
         encoder_hidden_states: np.ndarray,
+        use_merged: Optional[bool] = None,
         past_key_values: Optional[Tuple[Tuple[np.ndarray]]] = None,
         ) -> Dict[str, Union[np.ndarray, Tuple[Tuple[np.ndarray]]]]:
         
         batch_size = input_ids.shape[0]
         use_cache = past_key_values is not None
+        num_pkv = 4 if use_merged or not use_cache else 2
         
         model_inputs = {
             "input_ids": input_ids,
-            "encoder_hidden_states": encoder_hidden_states,
         }
         
         if use_cache:
@@ -64,28 +64,48 @@ class ORTDecoder(ORTModelBase):
                 past_key_value for pkv_per_layer in past_key_values for past_key_value in pkv_per_layer
             )
         
-        if not use_cache:
-            past_key_values = self.initial_kv_cache(batch_size)
-            model_inputs.update(zip(self.key_value_input_names + ["use_cache_branch"], past_key_values))
-        else:
+        if use_merged and use_cache:
+            model_inputs["encoder_hidden_states"] = encoder_hidden_states
             model_inputs.update(zip(self.key_value_input_names, past_key_values))
             model_inputs["use_cache_branch"] = np.array([use_cache], dtype=bool)
-        
+            
+        elif use_merged and not use_cache:
+            model_inputs["encoder_hidden_states"] = encoder_hidden_states    
+            past_key_values = self.initial_kv_cache(batch_size)
+            model_inputs.update(zip(self.key_value_input_names + ["use_cache_branch"], past_key_values))
+            
+        elif not use_merged and use_cache:
+            model_inputs.update(zip(self.key_value_input_names, past_key_values))
+            
+        else:
+            model_inputs["encoder_hidden_states"] = encoder_hidden_states
+
+        # print(f"onnx inputs checking")
+        # for key, value in model_inputs.items():
+        #     print(f"{key}: {value.shape}")
+        # print("="*150)
         out = self.session.run(None, model_inputs)
         out = self.binding_outputs(out)
-        
+
         out_past_key_values = tuple(out[output_name] for output_name in self.key_value_output_names)
-        
+
         if not use_cache:
             out_past_key_values = tuple(
-                        out_past_key_values[i : i + self.num_pkv] for i in range(0, len(out_past_key_values), self.num_pkv)
+                        out_past_key_values[i : i + num_pkv] for i in range(0, len(out_past_key_values), num_pkv)
                     )
         else:
-            out_past_key_values = tuple(
+            if num_pkv == 2:
+                out_past_key_values = tuple(
+                        out_past_key_values[i : i + num_pkv]
+                        + past_key_values[2 * i + 2 : 2 * i + 2 + num_pkv]
+                        for i in range(0, len(out_past_key_values), num_pkv)
+                    )
+            else:
+                out_past_key_values = tuple(
                             out_past_key_values[i : i + 2] + past_key_values[i + 2 : i + 4]
-                            for i in range(0, len(out_past_key_values), self.num_pkv)
-                        )
-        
+                            for i in range(0, len(out_past_key_values), num_pkv)
+                    )
+
         return {
             "logits":out["logits"],
             "past_key_values": out_past_key_values,
@@ -97,13 +117,23 @@ class ORTWhisper:
     encoder: ORTEncoder
     decoder: ORTDecoder
     tokenizer: WhisperTokenizer
-    
-    def __init__(self, encoder:InferenceSession, decoder:InferenceSession):
+
+    def __init__(
+        self, 
+        encoder:InferenceSession, 
+        decoder:InferenceSession, 
+        decoder_with_past: Optional[InferenceSession] = None
+        ):
+        
         self.processor = WhisperProcessor()
         self.encoder = ORTEncoder(encoder)
         self.decoder = ORTDecoder(decoder)
         self.tokenizer = WhisperTokenizer()
-    
+        
+        self.decoder_with_past = ORTDecoder(decoder_with_past) if decoder_with_past is not None else None
+        
+        self.use_merged = self.decoder_with_past is None
+        
     def __call__(self, 
                  audio:np.ndarray, 
                  sampling_rate:int, 
@@ -117,13 +147,25 @@ class ORTWhisper:
         encoder_hidden_states = self.encoder([input_features])["last_hidden_state"]
         past_key_values = None
         
+        # count = 0
         while not np.all(stopping_criteria(input_ids)):
+            # print(f"input_ids: {input_ids}")
+            model = self.decoder if self.use_merged or past_key_values is None else self.decoder_with_past
+            
             model_inputs = self.prepare_inputs_for_generation(input_ids, encoder_hidden_states, past_key_values)
-            decoder_outputs = self.decoder(**model_inputs)
+            
+            # using_past_model = "NO" if self.use_merged or past_key_values is None else "YES"
+            # print(f"model_inputs['input_ids']: {model_inputs['input_ids']}, using past model: {using_past_model}")
+            decoder_outputs = model(**model_inputs)
             
             next_token = np.argmax(decoder_outputs["logits"][:, -1, :], axis=-1, keepdims=True)
             input_ids = np.concatenate([input_ids, next_token], axis=-1)
             past_key_values = decoder_outputs["past_key_values"]
+            
+            # if count == 10:
+            #     break
+            
+            # count+=1
 
         return self.tokenizer.batch_decode(input_ids, skip_special_tokens=True)
     
@@ -147,5 +189,6 @@ class ORTWhisper:
         return {
             "input_ids": decoder_input_ids,
             "encoder_hidden_states": encoder_outputs,
+            "use_merged": self.use_merged,
             "past_key_values": past_key_values,
         }

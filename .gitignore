@@ -7,4 +7,5 @@ Dockerfile
 .devcontainer
 .github
 whisper-tiny
+whisper-tiny-with-past
 __pycache__
