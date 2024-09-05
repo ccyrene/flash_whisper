@@ -1,5 +1,4 @@
 import librosa
-import numpy as np
 
 import sys
 import os
@@ -33,5 +32,4 @@ import time
 start_time = time.time()
 temp = whisper_model(audio, sampling_rate=16000)
 print(f"using time: {(time.time() - start_time) * 1000} ms")
-
 print(temp)

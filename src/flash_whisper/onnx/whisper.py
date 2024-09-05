@@ -80,10 +80,6 @@ class ORTDecoder(ORTModelBase):
         else:
             model_inputs["encoder_hidden_states"] = encoder_hidden_states
 
-        # print(f"onnx inputs checking")
-        # for key, value in model_inputs.items():
-        #     print(f"{key}: {value.shape}")
-        # print("="*150)
         out = self.session.run(None, model_inputs)
         out = self.binding_outputs(out)
 
@@ -146,27 +142,19 @@ class ORTWhisper:
         
         encoder_hidden_states = self.encoder([input_features])["last_hidden_state"]
         past_key_values = None
-        
-        # count = 0
+
         while not np.all(stopping_criteria(input_ids)):
-            # print(f"input_ids: {input_ids}")
+            
             model = self.decoder if self.use_merged or past_key_values is None else self.decoder_with_past
             
             model_inputs = self.prepare_inputs_for_generation(input_ids, encoder_hidden_states, past_key_values)
-            
-            # using_past_model = "NO" if self.use_merged or past_key_values is None else "YES"
-            # print(f"model_inputs['input_ids']: {model_inputs['input_ids']}, using past model: {using_past_model}")
+
             decoder_outputs = model(**model_inputs)
             
             next_token = np.argmax(decoder_outputs["logits"][:, -1, :], axis=-1, keepdims=True)
             input_ids = np.concatenate([input_ids, next_token], axis=-1)
             past_key_values = decoder_outputs["past_key_values"]
             
-            # if count == 10:
-            #     break
-            
-            # count+=1
-
         return self.tokenizer.batch_decode(input_ids, skip_special_tokens=True)
     
     def prepare_inputs_for_generation(
