@@ -1,5 +1,5 @@
-checkpoint_dir=/workspace/assets/whisper-medium-en/safetensors
-output_dir=/workspace/assets/whisper-medium-en/whisper_medium_en
+checkpoint_dir=/workspace/assets/whisper-medium/safetensors
+output_dir=/workspace/assets/whisper-medium/whisper_medium
 MAX_BATCH_SIZE=8
 MAX_BEAM_WIDTH=4
 INFERENCE_PRECISION=float16
@@ -17,7 +17,6 @@ trtllm-build --checkpoint_dir ${checkpoint_dir}/encoder \
 
 trtllm-build --checkpoint_dir ${checkpoint_dir}/decoder \
                 --output_dir ${output_dir}/decoder \
-                --paged_kv_cache disable \
                 --moe_plugin disable \
                 --enable_xqa disable \
                 --max_beam_width ${MAX_BEAM_WIDTH} \
