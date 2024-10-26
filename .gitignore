@@ -7,5 +7,9 @@ Dockerfile
 .devcontainer
 .github
 whisper-tiny
+assets
 whisper-tiny-with-past
+whisper-medium.en
+distil-medium.en
+TensorRT-LLM
 __pycache__

@@ -7,8 +7,8 @@ from onnxruntime import InferenceSession
 from .base import ORTModelBase
 from .utils import ort_type_to_dtype
 
-from ..processor.processor import WhisperProcessor
-from ..tokenizer.tokenizer_whisper import WhisperTokenizer
+from .processor.processor import WhisperProcessor
+from .tokenizer.tokenizer_whisper import WhisperTokenizer
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +49,7 @@ class ORTDecoder(ORTModelBase):
         encoder_hidden_states: np.ndarray,
         use_merged: Optional[bool] = None,
         past_key_values: Optional[Tuple[Tuple[np.ndarray]]] = None,
+        cache_position: Optional[np.ndarray] = None,
         ) -> Dict[str, Union[np.ndarray, Tuple[Tuple[np.ndarray]]]]:
         
         batch_size = input_ids.shape[0]
@@ -58,6 +59,9 @@ class ORTDecoder(ORTModelBase):
         model_inputs = {
             "input_ids": input_ids,
         }
+        
+        if "cache_position" in self.key_value_input_names:
+            model_inputs["cache_position"] = cache_position
         
         if use_cache:
             past_key_values = tuple(
@@ -103,7 +107,7 @@ class ORTDecoder(ORTModelBase):
                     )
 
         return {
-            "logits":out["logits"],
+            "logits": out["logits"],
             "past_key_values": out_past_key_values,
         }
 
@@ -142,28 +146,31 @@ class ORTWhisper:
         
         encoder_hidden_states = self.encoder([input_features])["last_hidden_state"]
         past_key_values = None
-
+        cache_position = np.cumsum(np.ones_like(input_ids[0, :], dtype=np.int64)) - 1
+        
         while not np.all(stopping_criteria(input_ids)):
-            
             model = self.decoder if self.use_merged or past_key_values is None else self.decoder_with_past
-            
-            model_inputs = self.prepare_inputs_for_generation(input_ids, encoder_hidden_states, past_key_values)
-
+            model_inputs = self.prepare_inputs_for_generation(input_ids, encoder_hidden_states, past_key_values, cache_position)
             decoder_outputs = model(**model_inputs)
             
             next_token = np.argmax(decoder_outputs["logits"][:, -1, :], axis=-1, keepdims=True)
             input_ids = np.concatenate([input_ids, next_token], axis=-1)
             past_key_values = decoder_outputs["past_key_values"]
             
+            cache_position = cache_position[-1:] + 1
+
         return self.tokenizer.batch_decode(input_ids, skip_special_tokens=True)
     
+
     def prepare_inputs_for_generation(
         self,
         decoder_input_ids: np.ndarray,
         encoder_outputs: Optional[np.ndarray] = None,
         past_key_values: Optional[np.ndarray] = None,
+        cache_position: Optional[np.ndarray] = None,
         **kwargs,
     ):
+        
         if past_key_values is not None:
             past_length = past_key_values[0][0].shape[2]
 
@@ -174,9 +181,18 @@ class ORTWhisper:
 
             decoder_input_ids = decoder_input_ids[:, remove_prefix_length:]
 
+        if cache_position is None:
+            cache_position = np.arange(
+                past_length, past_length + decoder_input_ids.shape[1]
+            )
+            
+        elif past_key_values is not None:
+            cache_position = cache_position[-decoder_input_ids.shape[1] :]
+            
         return {
             "input_ids": decoder_input_ids,
             "encoder_hidden_states": encoder_outputs,
             "use_merged": self.use_merged,
             "past_key_values": past_key_values,
+            "cache_position": cache_position,
         }

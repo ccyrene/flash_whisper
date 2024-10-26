@@ -109,17 +109,12 @@ class WhisperProcessor:
 
         init_tokens = [copy.copy(init_tokens) for _ in languages]
         
-        
-        # print(f'language: {language}, hasattr(self.generation_config, "lang_to_id"): {hasattr(self.generation_config, "lang_to_id")}, is_lang_id_undefined: {is_lang_id_undefined}')
-        
         lang_ids = None
         if language is not None:
             lang_ids = [language_to_id(l) for l in languages]
         
         elif hasattr(self.generation_config, "lang_to_id") and is_lang_id_undefined:
             lang_ids = [language_to_id("en")] * batch_size
-        # else:
-        #     lang_ids = [language_to_id("en")] * batch_size
         
         if lang_ids is not None:
             for i in range(len(init_tokens)):
@@ -152,6 +147,4 @@ class WhisperProcessor:
 
             init_tokens[i] = [t for t in init_tokens[i] if t is not None]
             
-        # init_tokens = [[50258, 50259, 50359, 50363]]
-        # print(f"init_tokens: {init_tokens}")
         return np.tile(np.array(init_tokens, dtype=np.int64), (batch_size, 1))
