@@ -1,0 +1,2 @@
+FROM nvcr.io/nvidia/tritonserver:24.09-trtllm-python-py3
+

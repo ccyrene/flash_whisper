@@ -1,0 +1,47 @@
+name: "infer_bls"
+backend: "python"
+max_batch_size: ${triton_max_batch_size}
+
+parameters [
+  {
+    key: "engine_dir"
+    value: { string_value: "${engine_dir}"}
+  }
+]
+
+input [
+  {
+    name: "TEXT_PREFIX"
+    data_type: TYPE_STRING
+    dims: [1]
+  },
+  {
+    name: "WAV"
+    data_type: TYPE_FP32
+    dims: [-1]
+  },
+  {
+    name: "WAV_LENS"
+    data_type: TYPE_INT32
+    dims: [1]
+    optional: True
+  }
+]
+
+output [
+  {
+    name: "TRANSCRIPTS"
+    data_type: TYPE_STRING
+    dims: [1]
+  }
+]
+
+dynamic_batching {
+    max_queue_delay_microseconds: ${max_queue_delay_microseconds}
+  }
+instance_group [
+    {
+      count: 8
+      kind: KIND_CPU
+    }
+  ]

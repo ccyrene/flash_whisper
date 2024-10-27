@@ -5,8 +5,10 @@ Dockerfile
 *.flac
 *.json
 *.cache
+*.tiktoken
 .devcontainer
 .github
+model.cache
 assets
 whisper-tiny
 whisper-tiny-with-past
