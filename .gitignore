@@ -10,6 +10,7 @@ Dockerfile
 .github
 model.cache
 assets
+datasets
 whisper-tiny
 whisper-tiny-with-past
 whisper-medium

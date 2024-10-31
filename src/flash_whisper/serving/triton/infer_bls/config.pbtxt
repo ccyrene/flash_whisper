@@ -1,11 +1,11 @@
 name: "infer_bls"
 backend: "python"
-max_batch_size: ${triton_max_batch_size}
+max_batch_size: 8
 
 parameters [
   {
     key: "engine_dir"
-    value: { string_value: "${engine_dir}"}
+    value: { string_value: "/workspace/whisper-medium-tllm"}
   }
 ]
 
@@ -37,11 +37,11 @@ output [
 ]
 
 dynamic_batching {
-    max_queue_delay_microseconds: ${max_queue_delay_microseconds}
+    max_queue_delay_microseconds: 100
   }
 instance_group [
     {
-      count: 8
+      count: 4
       kind: KIND_CPU
     }
   ]

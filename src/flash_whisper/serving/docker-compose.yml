@@ -1,0 +1,19 @@
+services:
+  asr:
+    image: speed/whisper-server:24.09
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./triton:/triton_models
+      - ../../assets/whisper-medium/whisper_medium:/workspace/whisper-medium-tllm
+    environment:
+      - PYTHONIOENCODING=utf-8
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['0']
+              capabilities: [gpu]
+    command: >
+      /bin/bash -c "cd /workspace && bash prepare.sh"

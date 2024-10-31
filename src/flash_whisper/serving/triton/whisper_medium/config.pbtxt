@@ -1,0 +1,57 @@
+name: "whisper_medium"
+backend: "python"
+max_batch_size: 8
+
+dynamic_batching {
+    max_queue_delay_microseconds: 100
+}
+
+parameters [
+  {
+    key: "engine_dir"
+    value: { string_value: "/workspace/whisper-medium-tllm"}
+  },
+  {
+   key: "n_mels", 
+   value: {string_value:"80"}
+  },
+  {
+  key: "zero_pad"
+  value: {string_value: "false"}
+  }
+]
+
+input [
+  {
+    name: "WAV"
+    data_type: TYPE_FP32
+    dims: [-1]
+    optional: True
+  },
+  {
+    name: "WAV_LENS"
+    data_type: TYPE_INT32
+    dims: [1]
+    optional: True
+  },
+  {
+    name: "DECODER_INPUT_IDS"
+    data_type: TYPE_INT32
+    dims: [-1]
+    optional: True
+  }
+]
+output [
+  {
+    name: "OUTPUT_IDS"
+    data_type: TYPE_INT32
+    dims: [-1]
+  }
+]
+
+instance_group [
+  {
+    count: 1
+    kind: KIND_GPU
+  }
+]
