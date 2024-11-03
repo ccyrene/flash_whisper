@@ -1,23 +1,23 @@
 name: "whisper_medium"
 backend: "python"
-max_batch_size: 8
+max_batch_size: ${triton_max_batch_size}
 
 dynamic_batching {
-    max_queue_delay_microseconds: 100
+    max_queue_delay_microseconds: ${max_queue_delay_microseconds}
 }
 
 parameters [
   {
     key: "engine_dir"
-    value: { string_value: "/workspace/whisper-medium-tllm"}
+    value: { string_value: "${engine_dir}"}
   },
   {
    key: "n_mels", 
-   value: {string_value:"80"}
+   value: {string_value:"${n_mels}"}
   },
   {
   key: "zero_pad"
-  value: {string_value: "false"}
+  value: {string_value: "${zero_pad}"}
   }
 ]
 

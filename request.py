@@ -3,7 +3,10 @@ import base64
 
 url = "http://localhost:8080/transcribe"
 
-with open("test6min30s.wav", "rb") as file:
+# path = "sample0.flac"
+path = "test6min30s.wav"
+
+with open(path, "rb") as file:
     bpayload = file.read()
     
 response = requests.post(
@@ -12,7 +15,7 @@ response = requests.post(
             "audio": base64.encodebytes(bpayload).decode('utf-8'),
             "language": "th",
             "model_name": "infer_bls",
-            "max_new_tokens": 96
+            "max_new_tokens": 400
         }
     )
 

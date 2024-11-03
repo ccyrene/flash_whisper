@@ -4,7 +4,8 @@ RUN python3 -m pip install tensorrt-llm==0.15.0.dev2024101500
 WORKDIR /workspace
 COPY requirements.txt .
 COPY prepare.sh .
-COPY launch_triton_server.py .
 COPY fill_template.py .
+COPY ./converter /workspace/converter
+COPY ./triton /triton_models
 
 RUN python3 -m pip install -r requirements.txt
