@@ -1,274 +1,121 @@
-import logging
-import os
-from collections import defaultdict
-from pathlib import Path
-from typing import Dict, Iterable, List, Optional, TextIO, Tuple, Union
+import types
+import scipy
+import numpy as np
+import soundfile as sf
 
-import kaldialign
+from io import BytesIO
+from typing import Union, List
 
-Pathlike = Union[str, Path]
+import tritonclient
+from tritonclient.utils import np_to_triton_dtype
 
-
-def store_transcripts(
-    filename: Pathlike, texts: Iterable[Tuple[str, str, str]]
-) -> None:
-    """Save predicted results and reference transcripts to a file.
-
-    Args:
-      filename:
-        File to save the results to.
-      texts:
-        An iterable of tuples. The first element is the cur_id, the second is
-        the reference transcript and the third element is the predicted result.
-    Returns:
-      Return None.
-    """
-    with open(filename, "w") as f:
-        for cut_id, ref, hyp in texts:
-            print(f"{cut_id}:\tref={ref}", file=f)
-            print(f"{cut_id}:\thyp={hyp}", file=f)
-
-
-def write_error_stats(
-    f: TextIO,
-    test_set_name: str,
-    results: List[Tuple[str, str]],
-    enable_log: bool = True,
-) -> float:
-    """Write statistics based on predicted results and reference transcripts.
-
-    It will write the following to the given file:
-
-        - WER
-        - number of insertions, deletions, substitutions, corrects and total
-          reference words. For example::
-
-              Errors: 23 insertions, 57 deletions, 212 substitutions, over 2606
-              reference words (2337 correct)
-
-        - The difference between the reference transcript and predicted result.
-          An instance is given below::
-
-            THE ASSOCIATION OF (EDISON->ADDISON) ILLUMINATING COMPANIES
-
-          The above example shows that the reference word is `EDISON`,
-          but it is predicted to `ADDISON` (a substitution error).
-
-          Another example is::
-
-            FOR THE FIRST DAY (SIR->*) I THINK
-
-          The reference word `SIR` is missing in the predicted
-          results (a deletion error).
-      results:
-        An iterable of tuples. The first element is the cur_id, the second is
-        the reference transcript and the third element is the predicted result.
-      enable_log:
-        If True, also print detailed WER to the console.
-        Otherwise, it is written only to the given file.
-    Returns:
-      Return None.
-    """
-    subs: Dict[Tuple[str, str], int] = defaultdict(int)
-    ins: Dict[str, int] = defaultdict(int)
-    dels: Dict[str, int] = defaultdict(int)
-
-    # `words` stores counts per word, as follows:
-    #   corr, ref_sub, hyp_sub, ins, dels
-    words: Dict[str, List[int]] = defaultdict(lambda: [0, 0, 0, 0, 0])
-    num_corr = 0
-    ERR = "*"
-    for cut_id, ref, hyp in results:
-        ali = kaldialign.align(ref, hyp, ERR)
-        for ref_word, hyp_word in ali:
-            if ref_word == ERR:
-                ins[hyp_word] += 1
-                words[hyp_word][3] += 1
-            elif hyp_word == ERR:
-                dels[ref_word] += 1
-                words[ref_word][4] += 1
-            elif hyp_word != ref_word:
-                subs[(ref_word, hyp_word)] += 1
-                words[ref_word][1] += 1
-                words[hyp_word][2] += 1
-            else:
-                words[ref_word][0] += 1
-                num_corr += 1
-    ref_len = sum([len(r) for _, r, _ in results])
-    sub_errs = sum(subs.values())
-    ins_errs = sum(ins.values())
-    del_errs = sum(dels.values())
-    tot_errs = sub_errs + ins_errs + del_errs
-    tot_err_rate = "%.2f" % (100.0 * tot_errs / ref_len)
-
-    if enable_log:
-        logging.info(
-            f"[{test_set_name}] %WER {tot_errs / ref_len:.2%} "
-            f"[{tot_errs} / {ref_len}, {ins_errs} ins, "
-            f"{del_errs} del, {sub_errs} sub ]"
-        )
-
-    print(f"%WER = {tot_err_rate}", file=f)
-    print(
-        f"Errors: {ins_errs} insertions, {del_errs} deletions, "
-        f"{sub_errs} substitutions, over {ref_len} reference "
-        f"words ({num_corr} correct)",
-        file=f,
-    )
-    print(
-        "Search below for sections starting with PER-UTT DETAILS:, "
-        "SUBSTITUTIONS:, DELETIONS:, INSERTIONS:, PER-WORD STATS:",
-        file=f,
-    )
-
-    print("", file=f)
-    print("PER-UTT DETAILS: corr or (ref->hyp)  ", file=f)
-    for cut_id, ref, hyp in results:
-        ali = kaldialign.align(ref, hyp, ERR)
-        combine_successive_errors = True
-        if combine_successive_errors:
-            ali = [[[x], [y]] for x, y in ali]
-            for i in range(len(ali) - 1):
-                if ali[i][0] != ali[i][1] and ali[i + 1][0] != ali[i + 1][1]:
-                    ali[i + 1][0] = ali[i][0] + ali[i + 1][0]
-                    ali[i + 1][1] = ali[i][1] + ali[i + 1][1]
-                    ali[i] = [[], []]
-            ali = [
-                [
-                    list(filter(lambda a: a != ERR, x)),
-                    list(filter(lambda a: a != ERR, y)),
-                ]
-                for x, y in ali
-            ]
-            ali = list(filter(lambda x: x != [[], []], ali))
-            ali = [
-                [
-                    ERR if x == [] else " ".join(x),
-                    ERR if y == [] else " ".join(y),
-                ]
-                for x, y in ali
-            ]
-
+def split_data(data, k):
+    n = len(data)
+    if n < k:
         print(
-            f"{cut_id}:\t"
-            + " ".join(
-                (
-                    ref_word if ref_word == hyp_word else f"({ref_word}->{hyp_word})"
-                    for ref_word, hyp_word in ali
-                )
-            ),
-            file=f,
+            f"Warning: the length of the input list ({n}) is less than k ({k}). Setting k to {n}."
         )
+        k = n
 
-    print("", file=f)
-    print("SUBSTITUTIONS: count ref -> hyp", file=f)
+    quotient = n // k
+    remainder = n % k
 
-    for count, (ref, hyp) in sorted([(v, k) for k, v in subs.items()], reverse=True):
-        print(f"{count}   {ref} -> {hyp}", file=f)
+    result = []
+    start = 0
+    for i in range(k):
+        if i < remainder:
+            end = start + quotient + 1
+        else:
+            end = start + quotient
 
-    print("", file=f)
-    print("DELETIONS: count ref", file=f)
-    for count, ref in sorted([(v, k) for k, v in dels.items()], reverse=True):
-        print(f"{count}   {ref}", file=f)
+        result.append(data[start:end])
+        start = end
 
-    print("", file=f)
-    print("INSERTIONS: count hyp", file=f)
-    for count, hyp in sorted([(v, k) for k, v in ins.items()], reverse=True):
-        print(f"{count}   {hyp}", file=f)
-
-    print("", file=f)
-    print("PER-WORD STATS: word  corr tot_errs count_in_ref count_in_hyp", file=f)
-    for _, word, counts in sorted(
-        [(sum(v[1:]), k, v) for k, v in words.items()], reverse=True
-    ):
-        (corr, ref_sub, hyp_sub, ins, dels) = counts
-        tot_errs = ref_sub + hyp_sub + ins + dels
-        ref_count = corr + ref_sub + dels
-        hyp_count = corr + hyp_sub + ins
-
-        print(f"{word}   {corr} {tot_errs} {ref_count} {hyp_count}", file=f)
-    return float(tot_err_rate)
+    return result
 
 
-def write_triton_stats(stats, summary_file):
-    with open(summary_file, "w") as summary_f:
-        model_stats = stats["model_stats"]
-        # write a note, the log is from triton_client.get_inference_statistics(), to better human readability
-        summary_f.write(
-            "The log is parsing from triton_client.get_inference_statistics(), to better human readability. \n"
-        )
-        summary_f.write("To learn more about the log, please refer to: \n")
-        summary_f.write(
-            "1. https://github.com/triton-inference-server/server/blob/main/docs/user_guide/metrics.md \n"
-        )
-        summary_f.write(
-            "2. https://github.com/triton-inference-server/server/issues/5374 \n\n"
-        )
-        summary_f.write(
-            "To better improve throughput, we always would like let requests wait in the queue for a while, and then execute them with a larger batch size. \n"
-        )
-        summary_f.write(
-            "However, there is a trade-off between the increased queue time and the increased batch size. \n"
-        )
-        summary_f.write(
-            "You may change 'max_queue_delay_microseconds' and 'preferred_batch_size' in the model configuration file to achieve this. \n"
-        )
-        summary_f.write(
-            "See https://github.com/triton-inference-server/server/blob/main/docs/user_guide/model_configuration.md#delayed-batching for more details. \n\n"
-        )
-        for model_state in model_stats:
-            if "last_inference" not in model_state:
-                continue
-            summary_f.write(f"model name is {model_state['name']} \n")
-            model_inference_stats = model_state["inference_stats"]
-            total_queue_time_s = int(model_inference_stats["queue"]["ns"]) / 1e9
-            total_infer_time_s = int(model_inference_stats["compute_infer"]["ns"]) / 1e9
-            total_input_time_s = int(model_inference_stats["compute_input"]["ns"]) / 1e9
-            total_output_time_s = (
-                int(model_inference_stats["compute_output"]["ns"]) / 1e9
-            )
-            summary_f.write(
-                f"queue time {total_queue_time_s:<5.2f} s, compute infer time {total_infer_time_s:<5.2f} s, compute input time {total_input_time_s:<5.2f} s, compute output time {total_output_time_s:<5.2f} s \n"  # noqa
-            )
-            model_batch_stats = model_state["batch_stats"]
-            for batch in model_batch_stats:
-                batch_size = int(batch["batch_size"])
-                compute_input = batch["compute_input"]
-                compute_output = batch["compute_output"]
-                compute_infer = batch["compute_infer"]
-                batch_count = int(compute_infer["count"])
-                assert (
-                    compute_infer["count"]
-                    == compute_output["count"]
-                    == compute_input["count"]
-                )
-                compute_infer_time_ms = int(compute_infer["ns"]) / 1e6
-                compute_input_time_ms = int(compute_input["ns"]) / 1e6
-                compute_output_time_ms = int(compute_output["ns"]) / 1e6
-                summary_f.write(
-                    f"execuate inference with batch_size {batch_size:<2} total {batch_count:<5} times, total_infer_time {compute_infer_time_ms:<9.2f} ms, avg_infer_time {compute_infer_time_ms:<9.2f}/{batch_count:<5}={compute_infer_time_ms/batch_count:.2f} ms, avg_infer_time_per_sample {compute_infer_time_ms:<9.2f}/{batch_count:<5}/{batch_size}={compute_infer_time_ms/batch_count/batch_size:.2f} ms \n"  # noqa
-                )
-                # summary_f.write(
-                #     f"input {compute_input_time_ms:<9.2f} ms, avg {compute_input_time_ms/batch_count:.2f} ms, "  # noqa
-                # )
-                # summary_f.write(
-                #     f"output {compute_output_time_ms:<9.2f} ms, avg {compute_output_time_ms/batch_count:.2f} ms \n"  # noqa
-                # )
+def process_large_audio_np(samples, chunk_length=30, target_sr=16000):
+    samples_per_chunk = chunk_length * target_sr
+    total_samples = len(samples)
+    num_chunks = (total_samples + samples_per_chunk - 1) // samples_per_chunk  # ceiling division
+    chunks = [samples[i * samples_per_chunk:(i + 1) * samples_per_chunk] for i in range(num_chunks)]
 
+    return chunks
 
-def download_and_extract(
-    target_path: str,
-    url: str = "https://huggingface.co/csukuangfj/aishell-test-dev-manifests/resolve/main/data_aishell.tar.gz",
+def load_audio(bpayload: bytes, sr: int = 16000):
+    waveform, sample_rate = sf.read(BytesIO(bpayload), dtype=np.float32)
+    if sample_rate != 16000:
+        waveform = scipy.signal.resample(waveform, int(len(waveform)*sr/sample_rate))
+    return waveform
+
+def postprocess_string(res: Union[str, List[str]]):
+    if isinstance(res, str):
+        return res
+    elif isinstance(res, list):
+        if all(isinstance(item, str) for item in res):
+            return " ".join(res)
+        else:
+            return "\n".join(postprocess_string(sublist) for sublist in res)
+
+async def send_whisper(
+    dps: list,
+    name: str,
+    triton_client: tritonclient.grpc.aio.InferenceServerClient,
+    protocol_client: types.ModuleType,
+    model_name: str,
+    max_new_tokens: int = 128,
+    whisper_prompt: str = "<|startoftranscript|><|en|><|transcribe|><|notimestamps|>",
 ):
-    filename = url.split("/")[-1]
+    results = []
+    task_id = int(name[5:])
+    for i, dp in enumerate(dps):
 
-    # Download file using wget if it doesn't exist
-    command = f"wget -nc {url}"
-    os.system(command)
+        samples = np.zeros(
+            (
+                1,
+                480000
+            ),
+            dtype=np.float32,
+        )
 
-    # Extract file using tar
-    command = f"tar -xf {filename} -C {target_path}"
-    os.system(command)
+        samples[0, : len(dp)] = dp
 
-    # Delete downloaded file
-    os.remove(filename)
+        lengths = np.array([[len(dp)]], dtype=np.int32)
+
+        inputs = [
+            protocol_client.InferInput(
+                "WAV", samples.shape, np_to_triton_dtype(samples.dtype)
+            ),
+            protocol_client.InferInput(
+                "WAV_LENS", lengths.shape, np_to_triton_dtype(lengths.dtype)
+            ),
+            protocol_client.InferInput("TEXT_PREFIX", [1, 1], "BYTES"),
+            protocol_client.InferInput("MAX_NEW_TOKENS", [1, 1], "INT32"),
+        ]
+        
+        inputs[0].set_data_from_numpy(samples)
+        inputs[1].set_data_from_numpy(lengths)
+
+        input_data_numpy = np.array([whisper_prompt], dtype=object)
+        input_data_numpy = input_data_numpy.reshape((1, 1))
+        inputs[2].set_data_from_numpy(input_data_numpy)
+        
+        input_data_numpy = np.array([max_new_tokens], dtype=np.int32)
+        input_data_numpy = input_data_numpy.reshape((1, 1))
+        inputs[3].set_data_from_numpy(input_data_numpy)
+
+        outputs = [protocol_client.InferRequestedOutput("TRANSCRIPTS")]
+        sequence_id = 100000000 + i + task_id * 10
+        response = await triton_client.infer(
+            model_name, inputs, request_id=str(sequence_id), outputs=outputs
+        )
+
+        decoding_results = response.as_numpy("TRANSCRIPTS")[0]
+        if type(decoding_results) == np.ndarray:
+            decoding_results = b" ".join(decoding_results).decode("utf-8")
+        else:
+            decoding_results = decoding_results.decode("utf-8")
+
+        results.append(decoding_results.split())
+
+    return results

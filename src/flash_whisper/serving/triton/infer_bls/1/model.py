@@ -33,17 +33,18 @@ class TritonPythonModel:
         self.blank = self.tokenizer.encode(" ", allowed_special=self.tokenizer.special_tokens_set)[0]
         self.device = torch.device("cuda")
 
-    def process_batch(self, wav, wav_len, prompt_id):
+    def process_batch(self, wav, wav_len, max_new_tokens, prompt_id):
         wav = torch.from_numpy(wav[0]).to(self.device)
         wav_tensor = pb_utils.Tensor.from_dlpack("WAV", to_dlpack(wav.unsqueeze(0)))
         wav_len_tensor = pb_utils.Tensor("WAV_LENS", np.array([[wav_len]], np.int32))
+        mnt_tensor = pb_utils.Tensor("MAX_NEW_TOKENS", np.array([[max_new_tokens]], np.int32))
         prompt_id = torch.tensor(prompt_id).unsqueeze(0)
 
         prompt_id = pb_utils.Tensor("DECODER_INPUT_IDS", prompt_id.numpy().astype(np.int32))
         infer_request = pb_utils.InferenceRequest(
             model_name="whisper_medium",
             requested_output_names=["OUTPUT_IDS"],
-            inputs=[wav_tensor, wav_len_tensor, prompt_id]
+            inputs=[wav_tensor, wav_len_tensor, mnt_tensor, prompt_id]
         )
         inference_response = infer_request.exec()
         if inference_response.has_error():
@@ -67,14 +68,18 @@ class TritonPythonModel:
             assert wav.shape[0] == 1, "Only support batch size 1 for now"
             wav_len = pb_utils.get_input_tensor_by_name(request, "WAV_LENS").as_numpy()
             wav_len = wav_len.item()
+            
+            max_new_tokens = pb_utils.get_input_tensor_by_name(request, "MAX_NEW_TOKENS").as_numpy()
+            max_new_tokens = max_new_tokens.item()
 
-            output_ids = self.process_batch(wav, wav_len, prompt_id)
+            output_ids = self.process_batch(wav, wav_len, max_new_tokens, prompt_id)
             s = self.tokenizer.decode(output_ids)
             s = re.sub(r'<\|.*?\|>', '', s)
             sentence = np.array([s])
             out0 = pb_utils.Tensor("TRANSCRIPTS", sentence.astype(self.out0_dtype))
             inference_response = pb_utils.InferenceResponse(output_tensors=[out0])
             responses.append(inference_response)
+            
         return responses
 
     def finalize(self):

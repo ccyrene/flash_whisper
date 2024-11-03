@@ -39,6 +39,12 @@ input [
     data_type: TYPE_INT32
     dims: [-1]
     optional: True
+  },
+  {
+    name: "MAX_NEW_TOKENS"
+    data_type: TYPE_INT32
+    dims: [1]
+    optional: True
   }
 ]
 output [
