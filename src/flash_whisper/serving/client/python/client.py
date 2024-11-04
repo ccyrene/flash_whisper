@@ -79,7 +79,7 @@ def validate_request(payload: Union[bytes, str, int], param_name:str):
 def set_default(param_name:str):
     
     default_params = {
-        "model_name": "whisper_medium",
+        "model_name": "infer_bls",
         "language": "en",
         "chunk_duration": 30,
         "max_new_tokens": 96,
