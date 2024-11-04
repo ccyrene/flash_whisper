@@ -35,6 +35,12 @@ input [
     data_type: TYPE_INT32
     dims: [1]
     optional: True
+  },
+  {
+    name: "MODEL_NAME"
+    data_type: TYPE_STRING
+    dims: [1]
+    optional: True
   }
 ]
 

@@ -33,7 +33,7 @@ class TritonPythonModel:
         self.blank = self.tokenizer.encode(" ", allowed_special=self.tokenizer.special_tokens_set)[0]
         self.device = torch.device("cuda")
 
-    def process_batch(self, wav, wav_len, max_new_tokens, prompt_id):
+    def process_batch(self, wav, wav_len, max_new_tokens, prompt_id, model_name):
         wav = torch.from_numpy(wav[0]).to(self.device)
         wav_tensor = pb_utils.Tensor.from_dlpack("WAV", to_dlpack(wav.unsqueeze(0)))
         wav_len_tensor = pb_utils.Tensor("WAV_LENS", np.array([[wav_len]], np.int32))
@@ -42,7 +42,7 @@ class TritonPythonModel:
 
         prompt_id = pb_utils.Tensor("DECODER_INPUT_IDS", prompt_id.numpy().astype(np.int32))
         infer_request = pb_utils.InferenceRequest(
-            model_name="whisper_medium",
+            model_name=model_name,
             requested_output_names=["OUTPUT_IDS"],
             inputs=[wav_tensor, wav_len_tensor, mnt_tensor, prompt_id]
         )
@@ -58,8 +58,11 @@ class TritonPythonModel:
         for request in requests:
             # Perform inference on the request and append it to responses list...
             in_0 = pb_utils.get_input_tensor_by_name(request, "TEXT_PREFIX")
+            in_1 = pb_utils.get_input_tensor_by_name(request, "MODEL_NAME")
             prompt_ids = in_0.as_numpy().tolist()
+            model_name = in_1.as_numpy().tolist()
             prompt_ids = prompt_ids[0][0].decode('utf-8')
+            model_name = model_name[0][0].decode('utf-8')
             if prompt_ids == "":
                 prompt_ids = "<|startoftranscript|><|en|><|transcribe|><|notimestamps|>"
             prompt_id = self.tokenizer.encode(prompt_ids, allowed_special=self.tokenizer.special_tokens_set)
@@ -72,7 +75,7 @@ class TritonPythonModel:
             max_new_tokens = pb_utils.get_input_tensor_by_name(request, "MAX_NEW_TOKENS").as_numpy()
             max_new_tokens = max_new_tokens.item()
 
-            output_ids = self.process_batch(wav, wav_len, max_new_tokens, prompt_id)
+            output_ids = self.process_batch(wav, wav_len, max_new_tokens, prompt_id, model_name)
             s = self.tokenizer.decode(output_ids)
             s = re.sub(r'<\|.*?\|>', '', s)
             sentence = np.array([s])
