@@ -66,7 +66,7 @@ def validate_request(payload: Union[bytes, str, int], param_name:str):
         if not isinstance(payload, int):
             raise HTTPException(detail={"error": f"Invalid '{param_name}' parameter. Must be integer."}, status_code=400)
     
-        payload = max(2, min(payload, 448))
+        payload = max(2, min(payload, 434))
 
     if param_name == "num_tasks":
         if not isinstance(payload, int):
