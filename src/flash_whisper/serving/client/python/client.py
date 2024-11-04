@@ -66,7 +66,7 @@ def validate_request(payload: Union[bytes, str, int], param_name:str):
         if not isinstance(payload, int):
             raise HTTPException(detail={"error": f"Invalid '{param_name}' parameter. Must be integer."}, status_code=400)
     
-        payload = max(2, min(payload, 434))
+        payload = max(2, min(payload, 430))
 
     if param_name == "num_tasks":
         if not isinstance(payload, int):
@@ -79,7 +79,7 @@ def validate_request(payload: Union[bytes, str, int], param_name:str):
 def set_default(param_name:str):
     
     default_params = {
-        "model_name": "infer_bls",
+        "model_name": "whisper_medium",
         "language": "en",
         "chunk_duration": 30,
         "max_new_tokens": 96,
@@ -96,13 +96,13 @@ def get_data(request):
     for param in parameters:
         payload = request.get(param)
         
+        validate_request(payload, param)
+        
         if param == "audio":
             payload = base64.b64decode(payload)
         
         if payload is None and param != "audio":
             payload = set_default(param)
-            
-        validate_request(payload, param)
         
         user_inputs[param] = payload
         
