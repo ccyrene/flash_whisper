@@ -62,7 +62,6 @@ async def send_whisper(
     name: str,
     triton_client: tritonclient.grpc.aio.InferenceServerClient,
     protocol_client: types.ModuleType,
-    model_name: str,
     max_new_tokens: int = 128,
     whisper_prompt: str = "<|startoftranscript|><|en|><|transcribe|><|notimestamps|>",
 ):
@@ -90,7 +89,6 @@ async def send_whisper(
                 "WAV_LENS", lengths.shape, np_to_triton_dtype(lengths.dtype)
             ),
             protocol_client.InferInput("TEXT_PREFIX", [1, 1], "BYTES"),
-            protocol_client.InferInput("MODEL_NAME", [1, 1], "BYTES"),
             protocol_client.InferInput("MAX_NEW_TOKENS", [1, 1], "INT32"),
         ]
         
@@ -101,13 +99,9 @@ async def send_whisper(
         input_data_numpy = input_data_numpy.reshape((1, 1))
         inputs[2].set_data_from_numpy(input_data_numpy)
         
-        input_data_numpy = np.array([model_name], dtype=object)
-        input_data_numpy = input_data_numpy.reshape((1, 1))
-        inputs[3].set_data_from_numpy(input_data_numpy)
-        
         input_data_numpy = np.array([max_new_tokens], dtype=np.int32)
         input_data_numpy = input_data_numpy.reshape((1, 1))
-        inputs[4].set_data_from_numpy(input_data_numpy)
+        inputs[3].set_data_from_numpy(input_data_numpy)
 
         outputs = [protocol_client.InferRequestedOutput("TRANSCRIPTS")]
         sequence_id = 100000000 + i + task_id * 10

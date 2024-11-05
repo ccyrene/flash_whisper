@@ -45,12 +45,9 @@ def get_args():
 def validate_request(payload: Union[bytes, str, int], param_name:str):
     
     if param_name == "audio":
+        payload = base64.b64decode(payload)
         if not isinstance(payload, bytes):
             raise HTTPException(detail={"error": f"Invalid '{param_name}' parameter. Must be bytes."}, status_code=400)
-    
-    if param_name == "model_name":
-        if not isinstance(payload, str):
-            raise HTTPException(detail={"error": f"Invalid '{param_name}' parameter. Must be string."}, status_code=400)
     
     if param_name == "language":
         if not isinstance(payload, str):
@@ -79,7 +76,6 @@ def validate_request(payload: Union[bytes, str, int], param_name:str):
 def set_default(param_name:str):
     
     default_params = {
-        "model_name": "whisper_medium",
         "language": "en",
         "chunk_duration": 30,
         "max_new_tokens": 96,
@@ -90,20 +86,17 @@ def set_default(param_name:str):
 
 def get_data(request):
     
-    parameters = ["audio", "model_name", "language", "chunk_duration", "max_new_tokens", "num_tasks"]
+    user_parameters = set(request.keys())
+    default_parameters = {"audio", "language", "chunk_duration", "max_new_tokens", "num_tasks"}
     
     user_inputs = {}
-    for param in parameters:
+    for param in user_parameters:
         payload = request.get(param)
+        payload = validate_request(payload, param)
+        user_inputs[param] = payload
         
-        validate_request(payload, param)
-        
-        if param == "audio":
-            payload = base64.b64decode(payload)
-        
-        if payload is None and param != "audio":
-            payload = set_default(param)
-        
+    for param in default_parameters - user_parameters:
+        payload = set_default(param)
         user_inputs[param] = payload
         
     return user_inputs
@@ -127,7 +120,6 @@ async def main(request: Request):
     inference_kwarg = {
         "triton_client": triton_client,
         "protocol_client": protocol_client,
-        "model_name": payload["model_name"],
         "max_new_tokens": payload["max_new_tokens"],
         "whisper_prompt": f"<|startoftranscript|><|{payload['language']}|><|transcribe|><|notimestamps|>"
     }
