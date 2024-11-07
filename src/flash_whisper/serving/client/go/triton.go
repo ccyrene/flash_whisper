@@ -50,93 +50,6 @@ func ModelMetadataRequest(client triton.GRPCInferenceServiceClient, modelName st
 	return modelMetadataResponse
 }
 
-func ModelInferRequest(client triton.GRPCInferenceServiceClient, wav []byte, wavLen []byte, maxNewTokens []byte, prompt []byte) *triton.ModelInferResponse {
-	// Create context for our request with 10 second timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	// Create request input tensors
-	inferInputs := []*triton.ModelInferRequest_InferInputTensor{
-		&triton.ModelInferRequest_InferInputTensor{
-			Name:     "WAV",
-			Datatype: "FP32",
-			Shape:    []int64{1, 480000},
-		},
-		&triton.ModelInferRequest_InferInputTensor{
-			Name:     "WAV_LENS",
-			Datatype: "INT32",
-			Shape:    []int64{1, 1},
-		},
-		&triton.ModelInferRequest_InferInputTensor{
-			Name:     "MAX_NEW_TOKENS",
-			Datatype: "INT32",
-			Shape:    []int64{1, 1},
-		},
-		&triton.ModelInferRequest_InferInputTensor{
-			Name:     "TEXT_PREFIX",
-			Datatype: "STRING",
-			Shape:    []int64{1, 1},
-		},
-	}
-
-	// Create request input output tensors
-	inferOutputs := []*triton.ModelInferRequest_InferRequestedOutputTensor{
-		&triton.ModelInferRequest_InferRequestedOutputTensor{
-			Name: "TRANSCRIPTS",
-		},
-	}
-
-	// Create inference request for specific model/version
-	modelInferRequest := triton.ModelInferRequest{
-		ModelName:    "infer_bls",
-		ModelVersion: "",
-		Inputs:       inferInputs,
-		Outputs:      inferOutputs,
-	}
-
-	modelInferRequest.RawInputContents = append(modelInferRequest.RawInputContents, wav)
-	modelInferRequest.RawInputContents = append(modelInferRequest.RawInputContents, wavLen)
-	modelInferRequest.RawInputContents = append(modelInferRequest.RawInputContents, maxNewTokens)
-	modelInferRequest.RawInputContents = append(modelInferRequest.RawInputContents, prompt)
-
-	// Submit inference request to server
-	modelInferResponse, err := client.ModelInfer(ctx, &modelInferRequest)
-	if err != nil {
-		log.Fatalf("Error processing InferRequest: %v", err)
-	}
-	return modelInferResponse
-}
-
-// Helper function to read a single int32 from bytes (Little Endian)
-func readInt32(data []byte) int32 {
-	return int32(binary.LittleEndian.Uint32(data))
-}
-
-func preprocessString(inputStrList []string, batchSize int) []byte {
-
-    if batchSize > len(inputStrList) {
-        batchSize = len(inputStrList)
-    }
-
-    var inputStrBytes []byte
-    totalSize := 0
-    for b := 0; b < batchSize; b++ {
-        totalSize += 4 + len(inputStrList[b]) // 4 bytes for length + string bytes
-    }
-    inputStrBytes = make([]byte, 0, totalSize)
-
-    bs := make([]byte, 4) // To hold length as little-endian 4 bytes
-    for b := 0; b < batchSize; b++ {
-        inputStr := inputStrList[b]
-        strBytes := []byte(inputStr)
-        strCap := len(inputStr)
-        binary.LittleEndian.PutUint32(bs, uint32(strCap))
-        inputStrBytes = append(inputStrBytes, bs...) // Append length
-        inputStrBytes = append(inputStrBytes, strBytes...) // Append string
-    }
-    return inputStrBytes
-}
-
 func sendWhisper(
 	client triton.GRPCInferenceServiceClient,
 	dps [][]float32,
@@ -222,13 +135,7 @@ func sendWhisper(
 		}
 
 		outputBytes := response.RawOutputContents[0]
-		// fmt.Println(strings.Repeat("=", 100))
-		// fmt.Println(i)
-		// fmt.Println(outputBytes)
-		// fmt.Println(strings.Repeat("=", 100))
 		transcripts := string(outputBytes[4:])
-
-		// Append each transcript to the result slice
 		results = append(results, transcripts)
 	}
 

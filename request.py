@@ -2,11 +2,11 @@ import requests
 import base64
 import pickle
 
-url = "http://localhost:8080/transcribe"
+url = "http://0.0.0.0:8080/transcribe"
 
 # path = "sample0.flac"
-# path = "test10s.wav"
-path = "test6min30s.wav"
+path = "test10s.wav"
+# path = "test6min30s.wav"
 # path = "stereo.wav"
 
 with open(path, "rb") as file:
@@ -18,7 +18,7 @@ response = requests.post(
             "audio": base64.encodebytes(bpayload).decode('utf-8'),
             "language": "th",
             "max_new_tokens": 110,
-            "chunk_duration": 5
+            "chunk_duration": 30
             # "audio": None
         }
 )

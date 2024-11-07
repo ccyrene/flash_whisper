@@ -1,7 +1,7 @@
 package main
 
 import (
-	// "os"
+	"os"
 	"fmt"
 	"log"
 	"flag"
@@ -46,8 +46,8 @@ func main() {
         log.Println("No .env file found, proceeding with default environment")
     }
 
-    conn, err := grpc.Dial("localhost:8001", grpc.WithInsecure())
-    // conn, err := grpc.Dial(os.Getenv("TRITON_SERVER_ENDPOINT"), grpc.WithInsecure())
+    // conn, err := grpc.Dial("localhost:8001", grpc.WithInsecure())
+    conn, err := grpc.Dial(os.Getenv("TRITON_SERVER_ENDPOINT"), grpc.WithInsecure())
     if err != nil {
         log.Fatalf("Couldn't connect to endpoint %s: %v", config.Host, err)
     }

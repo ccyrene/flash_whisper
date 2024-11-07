@@ -1,9 +1,9 @@
 package main
 
 import (
+    "io"
     "bytes"
     "encoding/binary"
-    "io"
 )
 
 func parseWAVHeader(bpayload []byte) (sampleRate int, numChannels int, bitDepth int, dataStart int, err error) {

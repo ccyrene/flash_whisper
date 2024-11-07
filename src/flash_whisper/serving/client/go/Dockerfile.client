@@ -1,0 +1,12 @@
+FROM golang:1.23
+
+WORKDIR /workspace
+
+COPY go.mod go.sum ./
+RUN go mod download && go mod verify
+
+COPY *.go .
+COPY grpc-client grpc-client
+RUN go build -v -o .
+
+ENTRYPOINT ["./goclient"]

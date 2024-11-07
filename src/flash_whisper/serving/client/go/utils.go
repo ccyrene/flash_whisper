@@ -15,13 +15,18 @@ type Comparable interface {
 	~int | ~float64
 }
 
-type TranscriptionRequest struct {
-    Audio           string  `json:"audio"`
-    Language        *string `json:"language,omitempty"`
-    ChunkDuration   *int    `json:"chunk_duration,omitempty"`
-    MaxNewTokens    *int    `json:"max_new_tokens,omitempty"`
-    NumTasks        *int    `json:"num_tasks,omitempty"`
+type resultWithIndex struct {
+	taskId int
+	result string
 }
+
+// type TranscriptionRequest struct {
+//     Audio           string  `json:"audio"`
+//     Language        *string `json:"language,omitempty"`
+//     ChunkDuration   *int    `json:"chunk_duration,omitempty"`
+//     MaxNewTokens    *int    `json:"max_new_tokens,omitempty"`
+//     NumTasks        *int    `json:"num_tasks,omitempty"`
+// }
 
 func validateRequest(param interface{}, paramName string) (interface{}, error) {
     switch paramName {
@@ -91,6 +96,11 @@ func min[T Comparable](a, b T) T {
 	return b
 }
 
+// Helper function to read a single int32 from bytes (Little Endian)
+func readInt32(data []byte) int32 {
+	return int32(binary.LittleEndian.Uint32(data))
+}
+
 func int32ToByte(data []int32) []byte {
     byteArray := make([]byte, len(data)*4)
     for i, v := range data {
@@ -111,6 +121,31 @@ func float32ToByte(data []float32) []byte {
     return byteArray
 }
 
+func preprocessString(inputStrList []string, batchSize int) []byte {
+
+    if batchSize > len(inputStrList) {
+        batchSize = len(inputStrList)
+    }
+
+    var inputStrBytes []byte
+    totalSize := 0
+    for b := 0; b < batchSize; b++ {
+        totalSize += 4 + len(inputStrList[b]) // 4 bytes for length + string bytes
+    }
+    inputStrBytes = make([]byte, 0, totalSize)
+
+    bs := make([]byte, 4) // To hold length as little-endian 4 bytes
+    for b := 0; b < batchSize; b++ {
+        inputStr := inputStrList[b]
+        strBytes := []byte(inputStr)
+        strCap := len(inputStr)
+        binary.LittleEndian.PutUint32(bs, uint32(strCap))
+        inputStrBytes = append(inputStrBytes, bs...) // Append length
+        inputStrBytes = append(inputStrBytes, strBytes...) // Append string
+    }
+    return inputStrBytes
+}
+
 func postprocessString(res interface{}) string {
 	switch v := res.(type) {
 	case string:
@@ -126,170 +161,4 @@ func postprocessString(res interface{}) string {
 	default:
 		return ""
 	}
-}
-
-func healthCheck(c *fiber.Ctx) error {
-    return c.SendString("I'm still alive!")
-}
-
-type resultWithIndex struct {
-	taskId int
-	result string
-}
-
-func transcribe(c *fiber.Ctx) error {
-    var jsonPayload map[string]interface{}
-    if err := c.BodyParser(&jsonPayload); err != nil {
-        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-            "error": "Invalid JSON format",
-        })
-    }
-
-    userInputs, err := getData(jsonPayload)
-    if err != nil {
-        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-            "error": err.Error(),
-        })
-    }
-
-    audioBytes, err := base64.StdEncoding.DecodeString(userInputs["audio"].(string))
-    if err != nil {
-        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-            "error": "Failed to decode audio",
-        })
-    }
-
-    // Before loading audio
-    fmt.Printf("Loaded audio bytes length: %d\n", len(audioBytes))
-
-
-    sampleRate, numChannels, bitDepth, dataStart, err := parseWAVHeader(audioBytes)
-    if err != nil {
-        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-            "error":   "Error parsing WAV header",
-            "details": err.Error(),
-        })
-    }
-    
-    fmt.Printf("Sample Rate: %d, Channels: %d, Bit Depth: %d\n", sampleRate, numChannels, bitDepth)
-
-    pcmData, err := readPCMData(audioBytes, dataStart, numChannels, bitDepth)
-    if err != nil {
-        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-            "error":   "Error reading PCM data",
-            "details": err.Error(),
-        })
-    }
-
-    fmt.Printf("PCM Data: %d\n", len(pcmData))
-
-    resampled, err := resample(pcmData, sampleRate, 16000)
-    if err != nil {
-        return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
-    }
-
-    batchAudio, err := processLargeAudio(resampled, userInputs["chunk_duration"].(int))
-    if err != nil {
-        return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
-    }
-    numTasks := userInputs["num_tasks"].(int)
-    dpsList, err := splitData(batchAudio, numTasks)
-    if err != nil {
-        return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
-    }
-
-    numTasks = min(numTasks, len(dpsList))
-
-    // var wg sync.WaitGroup
-    // resultChan := make(chan string, numTasks)
-
-    // for i:=0; i<numTasks; i++ {
-    //     wg.Add(1)
-    //     go func(i int) {
-    //         defer wg.Done()
-    //         result, err := sendWhisper(
-    //             tritonClient, 
-    //             dpsList[i], 
-    //             fmt.Sprintf("task-%d", i), 
-    //             int32(userInputs["max_new_tokens"].(int)), 
-    //             userInputs["language"].(string),
-    //         )
-	// 		if err != nil {
-	// 			// Handle error appropriately
-	// 			log.Printf("Error processing task-%d: %v", i, err)
-	// 			resultChan <- fmt.Sprintf("Error processing task-%d", i)
-	// 			return
-	// 		}
-    //         for _, res := range result {
-    //             resultChan <- res
-    //         }
-    //     }(i)
-    // }
-
-    // go func(){
-    //     wg.Wait()
-    //     close(resultChan)
-    // }()
-
-	// var results []string
-	// for result := range resultChan {
-	// 	results = append(results, result)
-	// }
-
-	var wg sync.WaitGroup
-	resultChan := make(chan resultWithIndex, numTasks)
-
-	// Simulate task processing using goroutines
-	for i := 0; i < numTasks; i++ {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
-			// Simulating sendWhisper, replace it with your actual function call
-			result, err := sendWhisper(
-                            tritonClient, 
-                            dpsList[i], 
-                            fmt.Sprintf("task-%d", i), 
-                            int32(userInputs["max_new_tokens"].(int)), 
-                            userInputs["language"].(string),
-                        )
-			if err != nil {
-				log.Printf("Error processing task-%d: %v", i, err)
-				resultChan <- resultWithIndex{taskId: i, result: fmt.Sprintf("Error processing task-%d", i)}
-				return
-			}
-			// Send each result with its index
-			for _, res := range result {
-				resultChan <- resultWithIndex{taskId: i, result: res}
-			}
-		}(i)
-	}
-
-	// Close the channel when all goroutines have finished
-	go func() {
-		wg.Wait()
-		close(resultChan)
-	}()
-
-	// Collect results and sort them by taskId
-	var results []string
-	resultMap := make(map[int][]string) // To store results by taskId
-
-	// Process each result, storing them by taskId
-	for result := range resultChan {
-		resultMap[result.taskId] = append(resultMap[result.taskId], result.result)
-	}
-
-	// Now that results are grouped by taskId, sort them by taskId order
-	for i := 0; i < numTasks; i++ {
-		// Process the results for each task in order
-		for _, res := range resultMap[i] {
-			results = append(results, res)
-		}
-	}
-
-    res := postprocessString(results)
-
-    return c.JSON(fiber.Map{
-        "text": res,
-    })
 }
