@@ -5,12 +5,15 @@ Dockerfile
 *.flac
 *.json
 *.cache
+*.pkl
 *.tiktoken
 .devcontainer
 .github
 model.cache
 assets
+core
 datasets
+triton_models
 whisper-tiny
 whisper-tiny-with-past
 whisper-medium
