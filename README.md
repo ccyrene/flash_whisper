@@ -20,8 +20,10 @@ $docker-compose up --build .
 ## Performance
 
 Testing on :
-CPU: AMD Ryzen 7 5800H with Radeon Graphics 3.20 GHz Processor,
-GPU: NVIDIA GeForce RTX 3060 Laptop GPU\
+ - CPU
+ AMD Ryzen 7 5800H with Radeon Graphics 3.20 GHz Processor,
+ - GPU
+ NVIDIA GeForce RTX 3060 Laptop GPU\
 
 ### Server side
 
