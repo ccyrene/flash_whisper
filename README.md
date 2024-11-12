@@ -1,4 +1,4 @@
-# flash_whisper
+# Flash Whisper: ASR system for real-time application
 
 ## Quick Start
 
