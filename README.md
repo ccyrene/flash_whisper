@@ -25,7 +25,7 @@ Testing on :
 
 ### Server side
 ** Result of experiment using Whisper-tiny because my RAM not enough (in case using model in CPU) for using whisper-medium or more size.
-|Framework | RTF  | Throughput |
+|Framework | RTF (⭣) | Throughput (⭡) |
 | ------------- | ------------- | ------------- |
 | Transformers (CPU) |  0.55  | 1.82 |
 | ONNX (CPU) |  0.0099  | 101.32 |
