@@ -52,7 +52,7 @@ case $model_size in
     ;;
 esac
 
-mkdir -p "$(dirname "$openai_dir")"
+mkdir -p "$openai_dir"
 wget -O "$openai_dir/$model_size.pt" "$model_url"
 wget -O "../multilingual.tiktoken" "https://raw.githubusercontent.com/openai/whisper/main/whisper/assets/multilingual.tiktoken"
 wget -O "../mel_filters.npz" "https://raw.githubusercontent.com/openai/whisper/main/whisper/assets/mel_filters.npz"
