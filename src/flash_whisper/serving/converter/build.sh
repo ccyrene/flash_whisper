@@ -52,6 +52,7 @@ case $model_size in
     ;;
 esac
 
+mkdir -p "$(dirname "$openai_dir")"
 wget -O "$openai_dir/$model_size.pt" "$model_url"
 python3 convert_model_to_safetensors.py --model_dir=$openai_dir --model_name=$model_size --output_dir=$safetensors_dir
 
