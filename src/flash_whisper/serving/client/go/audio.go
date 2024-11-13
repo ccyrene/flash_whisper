@@ -4,7 +4,7 @@ import (
     "io"
     "fmt"
     "bytes"
-    "encoding/binary"
+    "github.com/youpy/go-wav"
 )
 
 func getData(request map[string]interface{}) (map[string]interface{}, error) {
@@ -63,72 +63,30 @@ func resample(samples []float32, srcRate int, targetRate int) ([]float32, error)
     return resampled, nil
 }
 
-func readPCMData(bpayload []byte, dataStart int, numChannels int, bitDepth int) ([]float32, error) {
-    // Create a reader for PCM data starting after the header
-    reader := bytes.NewReader(bpayload[dataStart:])
-    var samples []float32
+func readWAVData(bpayload []byte, numChannels int) ([]float32, error) {
 
-    // Calculate bytes per sample
-    bytesPerSample := bitDepth / 8
-    frameSize := numChannels * bytesPerSample
+    reader := wav.NewReader(bytes.NewReader(bpayload))
 
-    // Read samples until EOF
+    var wavData []float32
+
     for {
-        frame := make([]byte, frameSize)
-        if _, err := io.ReadFull(reader, frame); err == io.EOF {
+        samples, err := reader.ReadSamples()
+        if err == io.EOF {
             break
-        } else if err != nil {
-            return nil, fmt.Errorf("failed to read PCM frame: %v", err)
         }
 
-        // If the audio is stereo, combine the two channels into one (mono)
-        if numChannels == 2 {
-            // Average the left and right channels for each sample frame
-            var monoSampleValue float32
-            for i := 0; i < 2; i++ {
-                // Extract sample data for the channel
-                sampleBytes := frame[i*bytesPerSample : (i+1)*bytesPerSample]
-
-                // Convert sample to float32
-                var sampleValue float32
-                switch bitDepth {
-                case 16:
-                    sampleValue = float32(int16(binary.LittleEndian.Uint16(sampleBytes))) / 32768.0
-                case 24:
-                    sampleValue = float32(int32(sampleBytes[0])|(int32(sampleBytes[1])<<8)|(int32(sampleBytes[2])<<16)) / 8388608.0
-                default:
-                    return nil, fmt.Errorf("unsupported bit depth: %d", bitDepth)
-                }
-
-                // Add to the mono sample value
-                monoSampleValue += sampleValue
+        for _, sample := range samples {
+            var sampleValue float64
+            if numChannels == 2 {
+                sampleValue = (reader.FloatValue(sample, 0) + reader.FloatValue(sample, 1)) / 2
+            } else {
+                sampleValue = reader.FloatValue(sample, 0)
             }
-
-            // Take the average of the two channels and append to samples
-            monoSampleValue /= 2
-            samples = append(samples, monoSampleValue)
-        } else if numChannels == 1 {
-            // Handle the case for mono audio (no need to average channels)
-            for i := 0; i < numChannels; i++ {
-                sampleBytes := frame[i*bytesPerSample : (i+1)*bytesPerSample]
-
-                var sampleValue float32
-                switch bitDepth {
-                case 16:
-                    sampleValue = float32(int16(binary.LittleEndian.Uint16(sampleBytes))) / 32768.0
-                case 24:
-                    sampleValue = float32(int32(sampleBytes[0])|(int32(sampleBytes[1])<<8)|(int32(sampleBytes[2])<<16)) / 8388608.0
-                default:
-                    return nil, fmt.Errorf("unsupported bit depth: %d", bitDepth)
-                }
-
-                samples = append(samples, sampleValue)
-            }
-        } else {
-            return nil, fmt.Errorf("unsupported number of channels: %d", numChannels)
+            wavData = append(wavData, float32(sampleValue))
         }
     }
-    return samples, nil
+
+    return wavData, nil
 }
 
 func processLargeAudio(audio []float32, chunkDuration int) ([][]float32, error) {
@@ -139,7 +97,7 @@ func processLargeAudio(audio []float32, chunkDuration int) ([][]float32, error) 
 	numChunks := (totalSamples + samplesPerChunk - 1) / samplesPerChunk
 
 	// Initialize the 2D slice to hold audio chunks
-	batchAudio := make([][]float32, numChunks)
+	batchAudio := make([][]float32, 0)
 
 	for i := 0; i < numChunks; i++ {
 		// Calculate start and end indices for each chunk
@@ -150,7 +108,7 @@ func processLargeAudio(audio []float32, chunkDuration int) ([][]float32, error) 
 		}
 
 		// Slice the audio for the current chunk and append to batchAudio
-		batchAudio[i] = audio[start:end]
+		batchAudio = append(batchAudio, audio[start:end])
 	}
 
 	return batchAudio, nil

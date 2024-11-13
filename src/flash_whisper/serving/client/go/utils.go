@@ -2,13 +2,10 @@ package main
 
 import (
     "fmt"
-    "log"
     "math"
-    "sync"
     "strings"
     "encoding/binary"
     "encoding/base64"
-    "github.com/gofiber/fiber/v2"
 )
 
 type Comparable interface {

@@ -6,7 +6,7 @@ import (
     "encoding/binary"
 )
 
-func parseWAVHeader(bpayload []byte) (sampleRate int, numChannels int, bitDepth int, dataStart int, err error) {
+func parseWAVHeader(bpayload []byte) (sampleRate int, numChannels int, err error) {
     reader := bytes.NewReader(bpayload)
 
     // Skip to channel count (22 bytes in)
@@ -26,17 +26,6 @@ func parseWAVHeader(bpayload []byte) (sampleRate int, numChannels int, bitDepth 
     }
     sampleRate = int(rate)
 
-    // Skip 6 bytes (ByteRate and BlockAlign) to reach `BitsPerSample`
-    reader.Seek(6, io.SeekCurrent)
 
-    // Read bit depth (2 bytes)
-    var depth uint16
-    if err = binary.Read(reader, binary.LittleEndian, &depth); err != nil {
-        return
-    }
-    bitDepth = int(depth)
-
-    // Set starting position of PCM data after the 44-byte header
-    dataStart = 44
-    return sampleRate, numChannels, bitDepth, dataStart, nil
+    return sampleRate, numChannels,  nil
 }
