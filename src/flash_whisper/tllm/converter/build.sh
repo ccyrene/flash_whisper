@@ -52,9 +52,9 @@ case $model_size in
     ;;
 esac
 
-wget -O $openai_dir/$model_size.pt $model_url
-wget -O ../multilingual.tiktoken https://raw.githubusercontent.com/openai/whisper/main/whisper/assets/multilingual.tiktoken
-wget -O ../mel_filters.npz https://raw.githubusercontent.com/openai/whisper/main/whisper/assets/mel_filters.npz
+wget -O "$openai_dir/$model_size.pt" "$model_url"
+wget -O "../multilingual.tiktoken" "https://raw.githubusercontent.com/openai/whisper/main/whisper/assets/multilingual.tiktoken"
+wget -O "../mel_filters.npz" "https://raw.githubusercontent.com/openai/whisper/main/whisper/assets/mel_filters.npz"
 python3 convert_model_to_safetensors.py --model_dir=$openai_dir --model_name=$model_size --output_dir=$safetensors_dir
 
 MAX_BATCH_SIZE=8
