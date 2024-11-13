@@ -65,12 +65,14 @@ func sendWhisper(
 	}
 
 	for i, dp := range dps {
+		wavLenInt := len(dp)
+
 		// Prepare WAV tensor
-		samples := make([]float32, 480000)
+		samples := make([]float32, wavLenInt)
 		copy(samples, dp)
 
 		// Prepare length tensor
-		wavLen := []int32{int32(len(dp))}
+		wavLen := []int32{int32(wavLenInt)}
 
 		// Prepare TEXT_PREFIX and MAX_NEW_TOKENS tensors
 		promptList := []string{fmt.Sprintf("<|startoftranscript|><|%s|><|transcribe|><|notimestamps|>", language)}
@@ -83,7 +85,7 @@ func sendWhisper(
 			{
 				Name:     "WAV",
 				Datatype: "FP32",
-				Shape:    []int64{1, 480000},
+				Shape:    []int64{1, wavLenInt},
 			},
 			{
 				Name:     "WAV_LENS",
