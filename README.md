@@ -55,6 +55,19 @@ $python3 -m pip install tensorrt-llm==0.15.0.dev2024101500
 $
 ```
 
+```python
+import librosa
+from flash_whisper.tllm import WhisperTRTLLM
+
+audio_path = "./sample/sample0.flac"
+audio, sr = librosa.load(audio_path)
+audio = librosa.resample(audio, orig_sr=sr, target_sr=16000)
+
+engine_dir = "ENGINE_DIR"
+model = WhisperTRTLLM(engine_dir, n_mels=80)
+transcripts = model(audio)
+```
+
 for Windows's OS setup: https://nvidia.github.io/TensorRT-LLM/installation/windows.html \
 **If you using Windows I recommend using Wsl(Windows Subsystem for Linux), It's easy for setup.
 
