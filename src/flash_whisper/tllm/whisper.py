@@ -56,10 +56,14 @@ class WhisperTRTLLM:
         wav_length:Optional[Union[np.ndarray, List]] = None,
         language:Optional[Union[str, List[str]]] = None
     ):
+        
+        if isinstance(wav, np.ndarray) and wav.ndim==1:
+            wav = [wav]
+            
         if wav_length is None:
             if isinstance(wav, list) or (isinstance(wav, np.ndarray) and wav.dtype == object):
                 wav_length = [len(w) for w in wav]
-            elif isinstance(wav, np.ndarray):
+            elif isinstance(wav, np.ndarray) and wav.ndim==2:
                 batch, length = wav.shape
                 wav_length = [length] * batch
                 
