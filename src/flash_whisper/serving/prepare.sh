@@ -1,6 +1,17 @@
-engine_dir=/workspace/assets/whisper_medium
-n_mels=80
+model_size=$1
+
+engine_dir=/workspace/assets/$model_size/tllm
 zero_pad=false
+
+n_mels=80
+case $model_size in
+  "large-v2" | "large-v3" | "large-v3-turbo")
+    n_mels=128
+    ;;
+  *)
+    n_mels=80
+    ;;
+esac
 
 model_repo=/triton_models
 

@@ -1,6 +1,5 @@
 model_size=$1
 
-assets=/workspace/assets
 openai_dir=/workspace/assets/$model_size
 safetensors_dir=/workspace/assets/$model_size/safetensors
 output_dir=/workspace/assets/$model_size/tllm
@@ -44,7 +43,7 @@ case $model_size in
   "large")
     model_url="https://openaipublic.azureedge.net/main/whisper/models/e5b1a55b89c1367dacf97e3e19bfd829a01529dbfdeefa8caeb59b3f1b81dadb/large-v3.pt"
     ;;
-  "large-v3-turbo"|"turbo")
+  "large-v3-turbo")
     model_url="https://openaipublic.azureedge.net/main/whisper/models/aff26ae408abcba5fbf8813c21e62b0941638c5f6eebfb145be0c9839262a19a/large-v3-turbo.pt"
     ;;
   *)
@@ -53,7 +52,7 @@ case $model_size in
     ;;
 esac
 
-wget -O $openai_dir $model_size
+wget -O "$openai_dir/$model_size.pt" "$model_url"
 python3 convert_model_to_safetensors.py --model_dir=$openai_dir --model_name=$model_size --output_dir=$safetensors_dir
 
 MAX_BATCH_SIZE=8

@@ -9,6 +9,7 @@ services:
     networks:
       - whisper-network
     environment:
+      - MODEL_SIZE=medium
       - PYTHONIOENCODING=utf-8
     runtime: nvidia
     deploy:
@@ -20,7 +21,7 @@ services:
               capabilities: [gpu]
     shm_size: 1g
     command: >
-      /bin/bash -c "cd ./converter && bash ./build.sh && cd /workspace && bash prepare.sh"
+      /bin/bash -c "cd ./converter && bash ./build.sh $MODEL_SIZE && cd /workspace && bash prepare.sh $MODEL_SIZE"
 
   client:
     build:
