@@ -127,15 +127,11 @@ func sendWhisper(
 		ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 		defer cancel()
 
-		startTime := time.Now()
 		// Perform inference
 		response, err := client.ModelInfer(ctx, modelInferRequest)
 		if err != nil {
 			return nil, fmt.Errorf("error during inference: %w", err)
 		}
-
-		elapsed := time.Since(startTime)
-		fmt.Printf("Execution time for real inference: %d ms\n", elapsed.Milliseconds())
 
 		outputBytes := response.RawOutputContents[0]
 		transcripts := string(outputBytes[4:])
