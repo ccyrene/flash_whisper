@@ -39,7 +39,7 @@ audio, sr = librosa.load(audio_path)
 audio = librosa.resample(audio, orig_sr=sr, target_sr=16000)
 
 model = ORTWhisper(model_dir="outs/")
-transcripts = model(audio, sampling_rate=sr)
+transcripts = model(audio)
 ```
 
 
