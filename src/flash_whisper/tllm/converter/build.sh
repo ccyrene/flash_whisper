@@ -1,8 +1,9 @@
 model_size=$1
+dest_dir=$2
 
 openai_dir=../assets/$model_size
 safetensors_dir=../assets/$model_size/safetensors
-output_dir=../assets/$model_size/tllm
+output_dir=$dest_dir/tllm
 
 model_url=""
 
