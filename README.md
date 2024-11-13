@@ -19,15 +19,18 @@ $docker-compose up --build .
 ## Get Start
 ```bash
 $git clone https://github.com/rungrodkspeed/flash_whisper
-$cd flash_whisper
+
+$cd flash_whisper/
+
 $pip3 install -e .
 ```
 
 ### ONNX
+- Preparing material
 ```bash
-$optimum-cli export onnx --optimize=O3 --no-post-process --model=openai/{MODEL_SIZE} --task=automatic-speech-recognition-with-past outs
+$optimum-cli export onnx --optimize=O3 --no-post-process --model=openai/$MODEL_SIZE --task=automatic-speech-recognition-with-past $OUTPUT_DIR
 
-$python3 inference.py --onnx --model_dir=outs
+#optimum-cli export onnx --optimize=O3 --no-post-process --model=openai/whisper-medium --task=automatic-speech-recognition-with-past outs
 ```
 
 ```python
@@ -38,7 +41,8 @@ audio_path = "./sample/sample0.flac"
 audio, sr = librosa.load(audio_path)
 audio = librosa.resample(audio, orig_sr=sr, target_sr=16000)
 
-model = ORTWhisper(model_dir="outs/")
+model_dir = "$OUTPUT_DIR"
+model = ORTWhisper(model_dir=model_dir)
 transcripts = model(audio)
 ```
 
@@ -46,13 +50,16 @@ transcripts = model(audio)
 ### TensorRT-LLM
 - Setup
 ```bash
-$apt-get update && apt-get -y install python3.10 python3-pip openmpi-bin libopenmpi-dev git git-lfs
+$apt-get update && apt-get -y install python3.10 python3-pip openmpi-bin libopenmpi-dev git git-lfs wget
+
 $python3 -m pip install tensorrt-llm==0.15.0.dev2024101500
 ```
 
 - Preparing material
 ```bash
-$
+$cd src/flash_whisper/tllm/converter
+
+$bash build.sh $MODEL_SIZE $OUTPUT_DIR #bash build.sh medium /workspace
 ```
 
 ```python
@@ -63,7 +70,7 @@ audio_path = "./sample/sample0.flac"
 audio, sr = librosa.load(audio_path)
 audio = librosa.resample(audio, orig_sr=sr, target_sr=16000)
 
-engine_dir = "ENGINE_DIR"
+engine_dir = "$OUTPUT_DIR"
 model = WhisperTRTLLM(engine_dir, n_mels=80)
 transcripts = model(audio)
 ```
