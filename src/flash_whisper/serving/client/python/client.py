@@ -39,6 +39,13 @@ def get_args():
         default=4,
         help="spawn n process for client",
     )
+    
+    parser.add_argument(
+        "--keep-alive",
+        type=int,
+        default=5,
+        help="keep process alive",
+    )
 
     return parser.parse_args()
 
@@ -110,20 +117,19 @@ def healthcheck() -> bool:
 async def main(request: Request):
     
     json_payload = await request.json()
-    
     payload = get_data(json_payload)
     audio = load_audio(payload["audio"])
     dps = process_large_audio_np(audio, chunk_length=payload["chunk_duration"])
     dps_list = split_data(dps, payload["num_tasks"])
     num_tasks = min(payload["num_tasks"], len(dps_list))
-    
+
     inference_kwarg = {
         "triton_client": triton_client,
         "protocol_client": protocol_client,
         "max_new_tokens": payload["max_new_tokens"],
         "whisper_prompt": f"<|startoftranscript|><|{payload['language']}|><|transcribe|><|notimestamps|>"
     }
-    
+
     tasks = []
     for i in range(num_tasks):
         task = asyncio.create_task(
@@ -138,11 +144,10 @@ async def main(request: Request):
         
     ans_list = await asyncio.gather(*tasks)
     res = postprocess_string(ans_list)
-    
     return JSONResponse(content={"text": res}, status_code=200)
 
 if __name__ == "__main__":
 
     args = get_args()
     logging.basicConfig()
-    uvicorn.run("client:app", host="0.0.0.0", port=args.port, loop="uvloop", log_level="info", workers=args.workers)
+    uvicorn.run("client:app", host="0.0.0.0", port=args.port, loop="uvloop", log_level="info", timeout_keep_alive=args.keep_alive, workers=args.workers)
