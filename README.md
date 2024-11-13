@@ -30,6 +30,19 @@ $optimum-cli export onnx --optimize=O3 --no-post-process --model=openai/{MODEL_S
 $python3 inference.py --onnx --model_dir=outs
 ```
 
+```python
+import librosa
+from flash_whisper.onnx import ORTWhisper
+
+audio_path = "./sample/sample0.flac"
+audio, sr = librosa.load(audio_path)
+audio = librosa.resample(audio, orig_sr=sr, target_sr=16000)
+
+model = ORTWhisper(model_dir="outs/")
+transcripts = model(audio, sampling_rate=sr)
+```
+
+
 ### TensorRT-LLM
 - Setup
 ```bash
@@ -42,7 +55,7 @@ $python3 -m pip install tensorrt-llm==0.15.0.dev2024101500
 $
 ```
 
-for Windows's OS setup: https://nvidia.github.io/TensorRT-LLM/installation/windows.html
+for Windows's OS setup: https://nvidia.github.io/TensorRT-LLM/installation/windows.html \
 **If you using Windows I recommend using Wsl(Windows Subsystem for Linux), It's easy for setup.
 
 ## Performance
