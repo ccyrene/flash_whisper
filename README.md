@@ -1,6 +1,6 @@
-# Flash Whisper: ASR system for real-time application
+# Flash Whisper 🏎️ : ASR system for real-time application
 
-## Quick Start
+## Quick Start 🚀
 
 ```bash
 $git clone https://github.com/rungrodkspeed/flash_whisper
@@ -18,11 +18,11 @@ $python3 request.py
 
 **required space about 37-38 GiB
 
-## Optimization Solution
+## Optimization Solution ✨
 
 <image src="/media/solution.jpg"/>
 
-## Get Start
+## Get Started 🌟
 ```bash
 $git clone https://github.com/rungrodkspeed/flash_whisper
 
@@ -85,7 +85,7 @@ transcripts = model(audio)
 for Windows's OS setup: https://nvidia.github.io/TensorRT-LLM/installation/windows.html \
 **If you using Windows I recommend using Wsl(Windows Subsystem for Linux), It's easy for setup.
 
-## Performance
+## Performance ⚡
 
 Testing on :
  - CPU: AMD Ryzen 7 5800H with Radeon Graphics 3.20 GHz Processor
