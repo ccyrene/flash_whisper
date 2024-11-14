@@ -143,6 +143,9 @@ class ORTWhisper:
                     self.decoder_with_past = ORTDecoder(model)
                 elif "decoder" in name:
                     self.decoder = ORTDecoder(model)
+                    
+        if self.decoder is None:
+            raise ValueError("Decoder model not found in model directory.")
     
         self.processor = WhisperProcessor(model_dir)
         
@@ -151,7 +154,7 @@ class ORTWhisper:
         else:
             self.tokenizer = WhisperTokenizer(model_dir)
         
-        self.use_merged = self.decoder_with_past is None
+        self.use_merged = use_merged
         
     def __call__(self, 
                  audio:np.ndarray,
