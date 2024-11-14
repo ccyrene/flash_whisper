@@ -89,6 +89,11 @@ Testing on :
  - CPU: AMD Ryzen 7 5800H with Radeon Graphics 3.20 GHz Processor
  - GPU: NVIDIA GeForce RTX 3060 Laptop GPU
 
+Setting :
+ - max_new_tokens: 128
+ - chunk_duration: 30
+ - language: th
+
 ### Server side
 ** Result of experiment using Whisper-tiny because my RAM not enough (in case using model in CPU) for using whisper-medium or more size.
 |Framework | RTF (⭣) | Throughput (⭡) |
