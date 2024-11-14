@@ -136,6 +136,10 @@ class ORTWhisper:
         
         self.use_merged = self.decoder_with_past is None
         
+        print(self.decoder)
+        print(self.decoder_with_past)
+        print(self.use_merged)
+        
     def __call__(self, 
                  audio:np.ndarray,
                  language: Optional[Union[str, List[str]]] = None,
