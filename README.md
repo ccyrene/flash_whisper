@@ -10,6 +10,10 @@ $cd flash_whisper/src/flash_whisper/serving
 $docker-compose up --build .
 ```
 
+```bash
+$python3 request.py 
+```
+
 **required space about 37-38 GiB
 
 ## Optimization Solution
