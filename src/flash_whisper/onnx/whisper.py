@@ -119,18 +119,30 @@ class ORTWhisper:
     def __init__(
         self, 
         model_dir: str,
+        use_merged: bool = False,
         normalizer: bool = False
         ):
         
         model_map = initialize_model(model_dir)
         
+        self.encoder = None
         for name, model in model_map.items():
             if "encoder" in name:
                 self.encoder = ORTEncoder(model)
-            elif "decoder_with_past" in name:
-                self.decoder_with_past = ORTDecoder(model)
-            elif "decoder" in name:
+                break
+
+        if self.encoder is None:
+            raise ValueError("Encoder model not found in model directory.")
+
+        for name, model in model_map.items():
+            if use_merged and "decoder_model_merged" in name:
                 self.decoder = ORTDecoder(model)
+                break
+            elif not use_merged:
+                if "decoder_with_past" in name:
+                    self.decoder_with_past = ORTDecoder(model)
+                elif "decoder" in name:
+                    self.decoder = ORTDecoder(model)
     
         self.processor = WhisperProcessor(model_dir)
         
