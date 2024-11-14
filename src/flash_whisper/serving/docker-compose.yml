@@ -21,7 +21,7 @@ services:
               capabilities: [gpu]
     shm_size: 1g
     command: >
-      /bin/bash -c "cd ./converter && bash ./build.sh $MODEL_SIZE && cd /workspace && bash prepare.sh $MODEL_SIZE"
+      /bin/bash -c "cd ./converter && bash ./build.sh ${MODEL_SIZE} && cd /workspace && bash prepare.sh ${MODEL_SIZE}"
 
   client:
     build:
