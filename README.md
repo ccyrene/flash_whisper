@@ -7,6 +7,8 @@ $git clone https://github.com/rungrodkspeed/flash_whisper
 
 $cd flash_whisper/src/flash_whisper/serving
 
+$export MODEL_SIZE=medium #any size as you want.
+
 $docker-compose up --build .
 ```
 

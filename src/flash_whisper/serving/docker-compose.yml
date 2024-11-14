@@ -9,7 +9,6 @@ services:
     networks:
       - whisper-network
     environment:
-      - MODEL_SIZE=medium
       - PYTHONIOENCODING=utf-8
     runtime: nvidia
     deploy:
