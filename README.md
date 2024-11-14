@@ -28,9 +28,9 @@ $pip3 install -e .
 ### ONNX
 - Preparing material
 ```bash
-$optimum-cli export onnx --optimize=O3 --no-post-process --model=openai/$MODEL_SIZE --task=automatic-speech-recognition-with-past $OUTPUT_DIR
+$optimum-cli export onnx --no-post-process --model=openai/$MODEL_SIZE --task=automatic-speech-recognition-with-past $OUTPUT_DIR
 
-#optimum-cli export onnx --optimize=O3 --no-post-process --model=openai/whisper-medium --task=automatic-speech-recognition-with-past outs
+#optimum-cli export onnx --no-post-process --model=openai/whisper-tiny --task=automatic-speech-recognition-with-past outs
 ```
 
 ```python
@@ -59,7 +59,8 @@ $python3 -m pip install tensorrt-llm==0.15.0.dev2024101500
 ```bash
 $cd src/flash_whisper/tllm/converter
 
-$bash build.sh $MODEL_SIZE $OUTPUT_DIR #bash build.sh medium /workspace
+$bash build.sh $MODEL_SIZE $OUTPUT_DIR 
+#bash build.sh medium /workspace
 ```
 
 ```python
