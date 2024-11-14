@@ -85,7 +85,7 @@ func sendWhisper(
 			{
 				Name:     "WAV",
 				Datatype: "FP32",
-				Shape:    []int64{1, wavLenInt},
+				Shape:    []int64{1, int64(wavLenInt)},
 			},
 			{
 				Name:     "WAV_LENS",
