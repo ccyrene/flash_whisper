@@ -118,7 +118,8 @@ class ORTWhisper:
 
     def __init__(
         self, 
-        model_dir: str
+        model_dir: str,
+        normalizer: bool = False
         ):
         
         model_map = initialize_model(model_dir)
@@ -132,13 +133,13 @@ class ORTWhisper:
                 self.decoder = ORTDecoder(model)
     
         self.processor = WhisperProcessor(model_dir)
-        self.tokenizer = WhisperTokenizer(model_dir, normalizer_file=os.path.join(model_dir, "normalizer.json"))
+        
+        if normalizer:
+            self.tokenizer = WhisperTokenizer(model_dir, normalizer_file=os.path.join(model_dir, "normalizer.json"))
+        else:
+            self.tokenizer = WhisperTokenizer(model_dir)
         
         self.use_merged = self.decoder_with_past is None
-        
-        print(self.decoder)
-        print(self.decoder_with_past)
-        print(self.use_merged)
         
     def __call__(self, 
                  audio:np.ndarray,
