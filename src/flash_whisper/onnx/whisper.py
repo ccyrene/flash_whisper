@@ -1,16 +1,14 @@
-import logging
+import os 
 import numpy as np
 
 from typing import List, Dict, Optional, Union, Tuple
 from onnxruntime import InferenceSession
 
 from .base import ORTModelBase
-from .utils import ort_type_to_dtype
+from .utils import ort_type_to_dtype, initialize_model
 
 from .processor.processor import WhisperProcessor
 from .tokenizer.tokenizer_whisper import WhisperTokenizer
-
-logger = logging.getLogger(__name__)
 
 class ORTEncoder(ORTModelBase):
     
@@ -120,27 +118,30 @@ class ORTWhisper:
 
     def __init__(
         self, 
-        encoder:InferenceSession, 
-        decoder:InferenceSession, 
-        decoder_with_past: Optional[InferenceSession] = None
+        model_dir: str
         ):
         
-        self.processor = WhisperProcessor()
-        self.encoder = ORTEncoder(encoder)
-        self.decoder = ORTDecoder(decoder)
-        self.tokenizer = WhisperTokenizer()
+        model_map = initialize_model(model_dir)
         
-        self.decoder_with_past = ORTDecoder(decoder_with_past) if decoder_with_past is not None else None
+        for name, model in model_map.items():
+            if "encoder" in name:
+                self.encoder = ORTEncoder(model)
+            elif "decoder_with_past" in name:
+                self.decoder_with_past = ORTDecoder(model)
+            elif "decoder" in name:
+                self.decoder = ORTDecoder(model)
+    
+        self.processor = WhisperProcessor(model_dir)
+        self.tokenizer = WhisperTokenizer(model_dir, normalizer_file=os.path.join(model_dir, "normalizer.json"))
         
         self.use_merged = self.decoder_with_past is None
         
     def __call__(self, 
-                 audio:np.ndarray, 
-                 sampling_rate:int, 
+                 audio:np.ndarray,
                  language: Optional[Union[str, List[str]]] = None,
                  **kwargs):
         
-        input_features = self.processor.extraction(audio, sampling_rate=sampling_rate)["input_features"]
+        input_features = self.processor.extraction(audio, sampling_rate=16000)["input_features"]
         stopping_criteria = self.processor._get_stopping_criteria()
         input_ids = self.processor._retrieve_init_token(input_features.shape[0])
         

@@ -1,6 +1,5 @@
 import os 
 import json
-import time
 import logging
 import numpy as np
 from enum import Enum
@@ -63,9 +62,9 @@ class BatchFeature(UserDict):
         return self
 
 class FeatureExtractionMixin:
-    def __init__(self, **kwargs):
+    def __init__(self, config_dir, **kwargs):
         self._processor_class = kwargs.pop("processor_class", None)
-        with open(os.path.join(os.path.dirname(__file__), '..', 'config', 'preprocessor_config.json'), "r") as f:
+        with open(os.path.join(config_dir, 'preprocessor_config.json'), "r") as f:
             pretrained_feature_extractor_dict = json.load(f)
             
         for key, value in pretrained_feature_extractor_dict.items():
@@ -75,14 +74,14 @@ class FeatureExtractionMixin:
             setattr(self, key, value)
 
 class SequenceFeatureExtractor(FeatureExtractionMixin):
-    def __init__(self, feature_size: int, sampling_rate: int, padding_value: float, **kwargs):
+    def __init__(self, config_dir:str, feature_size: int, sampling_rate: int, padding_value: float, **kwargs):
         self.feature_size = feature_size
         self.sampling_rate = sampling_rate
         self.padding_value = padding_value
 
         self.padding_side = kwargs.pop("padding_side", "right")
         self.return_attention_mask = kwargs.pop("return_attention_mask", True)
-        super().__init__(**kwargs)
+        super().__init__(config_dir, **kwargs)
 
     def _get_padding_strategies(self, padding=False, max_length=None):
         # Get padding strategy
@@ -276,6 +275,7 @@ class WhisperFeatureExtractor(SequenceFeatureExtractor):
 
     def __init__(
         self,
+        config_dir,
         feature_size=80,
         sampling_rate=16000,
         hop_length=160,
@@ -286,6 +286,7 @@ class WhisperFeatureExtractor(SequenceFeatureExtractor):
         **kwargs,
     ):
         super().__init__(
+            config_dir=config_dir,
             feature_size=feature_size,
             sampling_rate=sampling_rate,
             padding_value=padding_value,

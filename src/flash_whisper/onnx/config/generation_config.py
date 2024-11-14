@@ -2,8 +2,8 @@ import os
 import json
 
 class GenerationConfig:
-    def __init__(self, **kwargs):
-        with open(os.path.join(os.path.dirname(__file__), 'generation_config.json'), "r") as f:
+    def __init__(self, config_dir, **kwargs):
+        with open(os.path.join(config_dir, 'generation_config.json'), "r") as f:
             config = json.load(f)
 
         for key, value in config.items():

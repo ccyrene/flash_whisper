@@ -191,6 +191,7 @@ class WhisperTokenizer(PreTrainedTokenizer):
 
     def __init__(
         self,
+        config_path,
         normalizer_file=None,
         errors="replace",
         unk_token="<|endoftext|>",
@@ -223,8 +224,7 @@ class WhisperTokenizer(PreTrainedTokenizer):
             if isinstance(pad_token, str)
             else pad_token
         )
-        
-        config_path = os.path.join(os.path.dirname(__file__), '..', 'config')
+
         with open(os.path.join(config_path, 'vocab.json'), encoding="utf-8") as vocab_handle:
             self.encoder = json.load(vocab_handle)
         self.decoder = {v: k for k, v in self.encoder.items()}

@@ -1,4 +1,9 @@
+import os
 import numpy as np
+import onnxruntime as ort
+
+from glob import glob
+from typing import Dict
 
 def ort_type_to_dtype(dtype):
 
@@ -16,3 +21,10 @@ def ort_type_to_dtype(dtype):
         expected_dtype = np.bool_
 
     return expected_dtype
+
+
+def initialize_model(model_dir:str) -> Dict:
+    model_file = glob(os.path.join(model_dir, "*.onnx"))
+    model_map = {os.path.basename(mf): ort.InferenceSession(mf) for mf in model_file}
+    
+    return model_map

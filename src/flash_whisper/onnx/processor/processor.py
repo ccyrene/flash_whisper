@@ -14,14 +14,12 @@ logger = logging.getLogger(__name__)
 
 class WhisperProcessor:
 
-    tokenizer: WhisperTokenizer
     generation_config: GenerationConfig
     feature_extractor: WhisperFeatureExtractor
     
-    def __init__(self):
-        self.tokenizer = WhisperTokenizer()
-        self.generation_config = GenerationConfig()
-        self.feature_extractor = WhisperFeatureExtractor()
+    def __init__(self, config_dir):
+        self.generation_config = GenerationConfig(config_dir)
+        self.feature_extractor = WhisperFeatureExtractor(config_dir)
         
     def extraction(self, audio: np.ndarray, sampling_rate:int) -> Dict[str, Union[List, np.ndarray]]:
         return self.feature_extractor(audio, sampling_rate=sampling_rate)
