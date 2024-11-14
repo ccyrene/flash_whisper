@@ -1,13 +1,9 @@
 import requests
 import base64
-import pickle
 
-url = "http://0.0.0.0:8080/transcribe"
+url = "http://localhost:8080/transcribe"
 
-# path = "sample0.flac"
-path = "test10s.wav"
-# path = "test6min30s.wav"
-# path = "stereo.wav"
+path = "./sample/sample0.flac"
 
 with open(path, "rb") as file:
     bpayload = file.read()
@@ -19,18 +15,15 @@ response = requests.post(
             "language": "th",
             "max_new_tokens": 110,
             "chunk_duration": 30
-            # "audio": None
         }
 )
 
 if response.status_code == 200:
     print("Request succeeded with status code:", response.status_code)
-        # Extracting the "text" from the JSON response
     text = response.json()["text"]
-    
-    # Write the text to a file
-    with open("result.txt", "w") as file:
-        file.write(text.replace("\n", "\n"))
+    print(text)
 else:
     print("Request failed with status code:", response.status_code)
     print(response.text)
+    
+    
