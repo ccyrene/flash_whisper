@@ -119,36 +119,18 @@ class ORTWhisper:
     def __init__(
         self, 
         model_dir: str,
-        use_merged: bool = False,
         normalizer: bool = False
         ):
         
         model_map = initialize_model(model_dir)
         
-        self.encoder = None
         for name, model in model_map.items():
             if "encoder" in name:
                 self.encoder = ORTEncoder(model)
-                break
-
-        if self.encoder is None:
-            raise ValueError("Encoder model not found in model directory.")
-
-        self.decoder = None
-        self.decoder_with_past = None
-        for name, model in model_map.items():
-            if use_merged and "decoder_model_merged" in name:
+            elif "decoder_with_past" in name:
+                self.decoder_with_past = ORTDecoder(model)
+            elif "decoder" in name:
                 self.decoder = ORTDecoder(model)
-                break
-            elif not use_merged:
-                if "decoder_with_past" in name:
-                    self.decoder_with_past = ORTDecoder(model)
-                elif "decoder" in name:
-                    self.decoder = ORTDecoder(model)
-        
-             
-        if self.decoder is None:
-            raise ValueError("Decoder model not found in model directory.")
     
         self.processor = WhisperProcessor(model_dir)
         
@@ -157,7 +139,7 @@ class ORTWhisper:
         else:
             self.tokenizer = WhisperTokenizer(model_dir)
         
-        self.use_merged = use_merged
+        self.use_merged = self.decoder_with_past is None
         
     def __call__(self, 
                  audio:np.ndarray,
@@ -173,11 +155,7 @@ class ORTWhisper:
         cache_position = np.cumsum(np.ones_like(input_ids[0, :], dtype=np.int64)) - 1
         
         while not np.all(stopping_criteria(input_ids)):
-            if self.decoder_with_past is None:
-                model = self.decoder
-            else:
-                model = self.decoder if self.use_merged or past_key_values is None else self.decoder_with_past
-                
+            model = self.decoder if self.use_merged or past_key_values is None else self.decoder_with_past
             model_inputs = self.prepare_inputs_for_generation(input_ids, encoder_hidden_states, past_key_values, cache_position)
             decoder_outputs = model(**model_inputs)
             
