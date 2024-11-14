@@ -3,7 +3,7 @@ import base64
 
 url = "http://localhost:8080/transcribe"
 
-path = "./sample/sample0.flac"
+path = "./sample/sample0.wav"
 
 with open(path, "rb") as file:
     bpayload = file.read()
