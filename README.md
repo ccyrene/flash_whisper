@@ -13,7 +13,7 @@ $docker-compose up --build
 ```
 
 ```bash
-$python3 request.py 
+$python3 request.py # WAV extension supported only.
 ```
 
 **required space about 37-38 GiB
