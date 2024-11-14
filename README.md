@@ -9,7 +9,7 @@ $cd flash_whisper/src/flash_whisper/serving
 
 $export MODEL_SIZE=medium #any size as you want.
 
-$docker-compose up --build .
+$docker-compose up --build
 ```
 
 ```bash
