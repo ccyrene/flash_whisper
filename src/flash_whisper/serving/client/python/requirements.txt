@@ -1,0 +1,8 @@
+tritonclient[grpc]==2.31
+soundfile
+numpy
+scipy
+uvicorn[standard]
+fastapi
+python-dotenv
+python-multipart
