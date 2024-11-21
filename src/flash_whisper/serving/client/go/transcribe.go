@@ -126,7 +126,6 @@ func transcribe(c *fiber.Ctx) error {
 
     return c.JSON(fiber.Map{
         "text": res,
-        "wavData": wavData,
     })
 
 }
