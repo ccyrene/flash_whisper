@@ -19,7 +19,7 @@ $python3 request.py # WAV extension supported only.
 **required space about 37-38 GiB
 
 ## Optimization Solution ✨
-![Overview](https://raw.githubusercontent.com/ccyrene/flash_whisper/main/overview.svg)
+
 
 ## Get Started 🌟
 ```bash
