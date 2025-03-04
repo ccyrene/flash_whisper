@@ -3,7 +3,7 @@
 ## Quick Start 🚀
 
 ```bash
-$git clone https://github.com/rungrodkspeed/flash_whisper
+$git clone https://github.com/ccyrene/flash_whisper
 
 $cd flash_whisper/src/flash_whisper/serving
 
@@ -23,7 +23,7 @@ $python3 request.py # WAV extension supported only.
 
 ## Get Started 🌟
 ```bash
-$git clone https://github.com/rungrodkspeed/flash_whisper
+$git clone https://github.com/ccyrene/flash_whisper
 
 $cd flash_whisper/
 
